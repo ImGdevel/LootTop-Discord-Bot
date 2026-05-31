@@ -1,7 +1,4 @@
 import {
-  handleLeaderboard,
-  handleMyCheckinStatus,
-  handleMyPlan,
   handleSettings,
 } from "../commands/handlers.js";
 import {
@@ -14,6 +11,11 @@ import {
   handleCheckinButton,
   handleCheckinModal,
 } from "./checkin.handler.js";
+import {
+  handleLeaderboardCommand,
+  handleMyPlanCommand,
+  handleMyCheckinStatusCommand,
+} from "./leaderboard.handler.js";
 import { BUTTON_IDS, COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
@@ -46,11 +48,11 @@ function routeCommand(
     case COMMANDS.CHECKIN:
       return handleCheckinCommand(interaction, env, ctx);
     case COMMANDS.LEADERBOARD:
-      return handleLeaderboard(interaction, env, ctx);
+      return handleLeaderboardCommand(interaction, env, ctx);
     case COMMANDS.MY_PLAN:
-      return handleMyPlan(interaction, env, ctx);
+      return handleMyPlanCommand(interaction, env, ctx);
     case COMMANDS.MY_CHECKIN_STATUS:
-      return handleMyCheckinStatus(interaction, env, ctx);
+      return handleMyCheckinStatusCommand(interaction, env, ctx);
     case COMMANDS.SETTINGS:
       return handleSettings(interaction, env, ctx);
     default:
@@ -69,8 +71,7 @@ function routeButton(
     case BUTTON_IDS.CHECKIN_TODAY:
       return handleCheckinButton(interaction);
     case BUTTON_IDS.LEADERBOARD_VIEW:
-      // TODO Phase 7
-      return null;
+      return handleLeaderboardCommand(interaction, env, ctx);
     default:
       return null;
   }
