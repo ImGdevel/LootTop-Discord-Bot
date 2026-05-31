@@ -85,7 +85,6 @@ export const COMMANDS = {
   SETTINGS: "설정",
 } as const;
 
-// V2 button IDs (prefix-matched in router)
 export const BUTTON_IDS = {
   GOAL_WRITE: "btn_goal_write_v2",
   CHECKIN_TODAY: "btn_checkin_today_v2",
@@ -94,6 +93,7 @@ export const BUTTON_IDS = {
 
 export const MODAL_IDS = {
   GOAL_WRITE: "modal_goal_write_v2",
+  GOAL_ADD_ITEM: "modal_goal_add_item_v2",
   CHECKIN_TODAY: "modal_checkin_today_v2",
 } as const;
 
@@ -102,7 +102,9 @@ export const MODAL_FIELDS = {
     GOAL_1: "goal_1",
     GOAL_2: "goal_2",
     GOAL_3: "goal_3",
-    REST_DAYS: "rest_days",
+    GOAL_4: "goal_4",
+    GOAL_5: "goal_5",
+    GOAL_ADD: "goal_add",
   },
   CHECKIN: {
     ITEM_1: "item_1",

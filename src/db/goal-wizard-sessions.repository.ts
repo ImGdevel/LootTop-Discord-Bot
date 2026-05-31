@@ -88,6 +88,21 @@ export async function updateGoalWizardSessionRestDays(
     .run();
 }
 
+export async function appendGoalWizardSessionLabel(
+  db: D1Database,
+  id: string,
+  label: string
+): Promise<void> {
+  const row = await getGoalWizardSession(db, id);
+  if (!row) return;
+  const goalLabels = JSON.parse(row.goal_labels_json) as string[];
+  goalLabels.push(label);
+  await db
+    .prepare("UPDATE goal_wizard_sessions SET goal_labels_json = ?, expires_at = ? WHERE id = ?")
+    .bind(JSON.stringify(goalLabels), expiresAt(), id)
+    .run();
+}
+
 export async function deleteGoalWizardSession(
   db: D1Database,
   id: string

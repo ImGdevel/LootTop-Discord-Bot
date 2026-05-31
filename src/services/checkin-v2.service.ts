@@ -15,7 +15,11 @@ export async function getTodayCheckinContext(
 ): Promise<{
   cycleId: number;
   threadId: string;
-  goalItemLabels: string[];
+  goalItems: Array<{
+    id: number;
+    label: string;
+    proofType: string;
+  }>;
 } | null> {
   const bundle = await getCurrentGoalBundle(db, guildId, discordUserId);
   if (!bundle.goal) return null;
@@ -24,7 +28,11 @@ export async function getTodayCheckinContext(
   return {
     cycleId: cycle.id,
     threadId: cycle.thread_id,
-    goalItemLabels: items.map((item) => item.label).slice(0, 3),
+    goalItems: items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      proofType: item.proof_type,
+    })),
   };
 }
 
@@ -34,7 +42,13 @@ export async function submitTodayCheckinV2(
   discordUserId: string,
   displayName: string,
   botToken: string,
-  values: string[]
+  itemsInput: Array<{
+    goalItemId: number;
+    checked?: boolean | null;
+    textValue?: string | null;
+    urlValue?: string | null;
+    attachmentUrl?: string | null;
+  }>
 ): Promise<{ success: boolean; message: string }> {
   const bundle = await getCurrentGoalBundle(db, guildId, discordUserId);
   if (!bundle.goal) {
@@ -43,16 +57,26 @@ export async function submitTodayCheckinV2(
 
   const cycle = await ensureTodayCheckinCycle(db, guildId, botToken);
   const goalItems = await getUserDailyGoalItems(db, bundle.goal.id);
-  const payloadItems = goalItems
-    .slice(0, 3)
-    .map((goalItem, index) => ({
-      goalItem,
-      value: values[index]?.trim() ?? "",
+  const goalItemMap = new Map(goalItems.map((item) => [item.id, item]));
+  const payloadItems = itemsInput
+    .map((item) => ({
+      goalItem: goalItemMap.get(item.goalItemId),
+      checked: item.checked ?? null,
+      textValue: item.textValue?.trim() ?? null,
+      urlValue: item.urlValue?.trim() ?? null,
+      attachmentUrl: item.attachmentUrl?.trim() ?? null,
     }))
-    .filter((item) => item.value);
+    .filter((item) => item.goalItem)
+    .filter((item) => item.checked === true || item.textValue || item.urlValue || item.attachmentUrl) as Array<{
+      goalItem: NonNullable<ReturnType<Map<number, typeof goalItems[number]>["get"]>>;
+      checked: boolean | null;
+      textValue: string | null;
+      urlValue: string | null;
+      attachmentUrl: string | null;
+    }>;
 
   if (payloadItems.length === 0) {
-    return { success: false, message: "오늘 수행한 항목을 최소 1개 이상 입력해 주세요." };
+    return { success: false, message: "오늘 수행한 항목을 최소 1개 이상 제출해 주세요." };
   }
 
   await upsertUser(db, guildId, discordUserId, displayName);
@@ -69,7 +93,10 @@ export async function submitTodayCheckinV2(
     entry.id,
     payloadItems.map((item) => ({
       goalItemId: item.goalItem.id,
-      textValue: item.value,
+      checked: item.checked,
+      textValue: item.textValue,
+      urlValue: item.urlValue,
+      attachmentUrl: item.attachmentUrl,
     }))
   );
 
@@ -79,7 +106,7 @@ export async function submitTodayCheckinV2(
     items: payloadItems.map((item) => ({
       label: item.goalItem.label,
       statusLabel: "완료",
-      detail: item.value,
+      detail: item.attachmentUrl ?? item.urlValue ?? item.textValue ?? (item.checked ? "체크 완료" : null),
     })),
   });
   const message = await createMessage(cycle.thread_id, botToken, {

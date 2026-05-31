@@ -3,12 +3,12 @@ import {
   deferredEphemeralResponse,
   deferredUpdateResponse,
   modalResponse,
-  selectMenuResponse,
   sendFollowup,
   updateFollowup,
 } from "../discord/response.js";
 import { buildCurrentWeeklyGoalFlow } from "../flows/goal.flow.js";
 import {
+  appendGoalWizardSessionLabel,
   createGoalWizardSession,
   deleteGoalWizardSession,
   getGoalWizardSession,
@@ -18,6 +18,7 @@ import {
 import { saveCurrentUserGoalsV2 } from "../services/goal-v2.service.js";
 import { getWeekStartDate, toLocalDateString } from "../domain/date.js";
 import { getGuildSettings } from "../db/guild-settings.repository.js";
+import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -31,6 +32,21 @@ export function handleGoalCommand(
 ): Response {
   ctx.waitUntil(handleGoalCommandAsync(interaction, env));
   return deferredEphemeralResponse();
+}
+
+export function handleGoalAddItemButton(interaction: DiscordInteraction): Response {
+  const customId = interaction.data?.custom_id ?? "";
+  const sessionId = customId.split(":")[2] ?? "";
+
+  return modalResponse(MODAL_IDS.GOAL_ADD_ITEM + ":" + sessionId, "목표 항목 추가", [
+    {
+      label: "추가할 목표",
+      customId: MODAL_FIELDS.GOAL.GOAL_ADD,
+      style: 1,
+      placeholder: "예: 매일 영어 단어 30개",
+      required: true,
+    },
+  ]);
 }
 
 async function handleGoalCommandAsync(
@@ -89,6 +105,15 @@ export function handleGoalWriteModal(
   return deferredEphemeralResponse();
 }
 
+export function handleGoalAddItemModal(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  ctx.waitUntil(handleGoalAddItemModalAsync(interaction, env));
+  return deferredEphemeralResponse();
+}
+
 async function handleGoalWriteModalAsync(
   interaction: DiscordInteraction,
   env: Env
@@ -138,9 +163,55 @@ async function handleGoalWriteModalAsync(
     undefined,
     {
       ephemeral: true,
+      flags: MessageFlags.IS_COMPONENTS_V2,
       components: buildStep2Components(session.id, goalLabels),
     }
   );
+}
+
+async function handleGoalAddItemModalAsync(
+  interaction: DiscordInteraction,
+  env: Env
+): Promise<void> {
+  const customId = interaction.data?.custom_id ?? "";
+  const sessionId = customId.split(":")[1] ?? "";
+  const session = await getGoalWizardSession(env.DB, sessionId);
+  const user = interaction.member?.user ?? interaction.user;
+  const guildId = interaction.guild_id;
+  if (!session || !user || !guildId) return;
+  if (session.guild_id !== guildId || session.discord_user_id !== user.id) return;
+
+  const components = interaction.data?.components ?? [];
+  let added = "";
+  for (const row of components) {
+    for (const comp of row.components ?? []) {
+      if (comp.custom_id === MODAL_FIELDS.GOAL.GOAL_ADD) {
+        added = comp.value.trim();
+      }
+    }
+  }
+
+  if (!added) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, "추가할 목표를 입력해 주세요.", {
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await appendGoalWizardSessionLabel(env.DB, sessionId, added);
+  const refreshed = await getGoalWizardSession(env.DB, sessionId);
+  if (!refreshed) return;
+  const goalLabels = JSON.parse(refreshed.goal_labels_json) as string[];
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+    ephemeral: true,
+    flags: MessageFlags.IS_COMPONENTS_V2,
+    components: buildStep2Components(
+      sessionId,
+      goalLabels,
+      refreshed.proof_types_json,
+      refreshed.rest_days_json
+    ),
+  });
 }
 
 // ─── 인증 방식 Select 상호작용 (goal:proof:{sessionId}:{idx}) ─────────────────
@@ -238,17 +309,15 @@ async function handleGoalSaveAsync(
 
   const session = await getGoalWizardSession(env.DB, sessionId);
   if (!session) {
-    await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
-      "세션이 만료되었습니다. 처음부터 다시 시도해 주세요.", {});
+    await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+      components: buildWizardStatusComponents("세션이 만료되었습니다. 처음부터 다시 시도해 주세요."),
+    });
     return;
   }
   if (session.guild_id !== guildId || session.discord_user_id !== user.id) {
-    await updateFollowup(
-      env.DISCORD_APPLICATION_ID,
-      interaction.token,
-      "이 목표 작성 세션에 접근할 수 없습니다.",
-      {}
-    );
+    await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+      components: buildWizardStatusComponents("이 목표 작성 세션에 접근할 수 없습니다."),
+    });
     return;
   }
 
@@ -267,8 +336,9 @@ async function handleGoalSaveAsync(
   );
 
   await deleteGoalWizardSession(env.DB, sessionId);
-  await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
-    result.message, { components: [] });
+  await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+    components: buildWizardStatusComponents(result.message),
+  });
 }
 
 // ─── Step2 UI 빌더 ────────────────────────────────────────────────────────────
@@ -289,6 +359,15 @@ const DAY_OPTIONS = [
   { label: "토요일", value: "토" },
   { label: "일요일", value: "일" },
 ];
+
+function buildWizardStatusComponents(markdown: string): unknown[] {
+  return [
+    {
+      type: 10,
+      content: markdown,
+    },
+  ];
+}
 
 function buildStep2Components(
   sessionId: string,
@@ -342,6 +421,16 @@ function buildStep2Components(
       style: 1,
       label: "저장하기",
       custom_id: "goal:save:" + sessionId,
+    }],
+  });
+
+  rows.push({
+    type: 1,
+    components: [{
+      type: 2,
+      style: 2,
+      label: "목표 항목 추가",
+      custom_id: "goal:add:" + sessionId,
     }],
   });
 

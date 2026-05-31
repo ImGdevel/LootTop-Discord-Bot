@@ -6,11 +6,14 @@ import {
   handleGoalProofTypeSelect,
   handleGoalRestDaysSelect,
   handleGoalSaveButton,
+  handleGoalAddItemButton,
+  handleGoalAddItemModal,
 } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
 import {
   handleCheckinCommand,
   handleCheckinButton,
+  handleCheckinItemSelect,
   handleCheckinModal,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
@@ -70,6 +73,9 @@ async function routeComponent(
   if (customId.startsWith("goal:save:")) {
     return handleGoalSaveButton(interaction, env, ctx);
   }
+  if (customId.startsWith("goal:add:")) {
+    return handleGoalAddItemButton(interaction);
+  }
 
   // 홈 버튼 → 목표/인증/리더보드 이동
   if (customId.startsWith("home:goal")) {
@@ -77,6 +83,9 @@ async function routeComponent(
   }
   if (customId.startsWith("home:checkin") || customId.startsWith("checkin:submit")) {
     return await handleCheckinButton(interaction, env);
+  }
+  if (customId.startsWith("checkin:item:select")) {
+    return await handleCheckinItemSelect(interaction, env);
   }
   if (customId.startsWith("home:leaderboard") || customId.startsWith("leaderboard:view")) {
     return handleLeaderboardCommand(interaction, env, ctx);
@@ -96,9 +105,13 @@ async function routeModal(
   switch (interaction.data?.custom_id) {
     case MODAL_IDS.GOAL_WRITE:
       return handleGoalWriteModal(interaction, env, ctx);
-    case MODAL_IDS.CHECKIN_TODAY:
-      return handleCheckinModal(interaction, env, ctx);
     default:
+      if ((interaction.data?.custom_id ?? "").startsWith(MODAL_IDS.GOAL_ADD_ITEM + ":")) {
+        return handleGoalAddItemModal(interaction, env, ctx);
+      }
+      if ((interaction.data?.custom_id ?? "").startsWith(MODAL_IDS.CHECKIN_TODAY + ":")) {
+        return handleCheckinModal(interaction, env, ctx);
+      }
       return null;
   }
 }

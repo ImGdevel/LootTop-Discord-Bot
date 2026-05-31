@@ -28,8 +28,8 @@ export async function buildTodayCheckinFlow(
   const card = buildCheckinEntryCard({
     memberDisplay: "내 인증 현황",
     submittedAtLabel: "오늘",
-    items: context.goalItemLabels.map((label) => ({
-      label,
+    items: context.goalItems.map((item) => ({
+      label: item.label,
       statusLabel: count > 0 ? "인증 기록 있음" : "아직 없음",
     })),
     appendButtonId: V2_BUTTON_IDS.CHECKIN_SUBMIT,

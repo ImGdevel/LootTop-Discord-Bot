@@ -51,6 +51,21 @@ export function modalResponse(customId: string, title: string, fields: ModalFiel
   } as unknown as InteractionResponse);
 }
 
+export function rawModalResponse(
+  customId: string,
+  title: string,
+  components: unknown[]
+): Response {
+  return jsonResponse({
+    type: InteractionResponseType.MODAL,
+    data: {
+      custom_id: customId,
+      title,
+      components,
+    },
+  } as unknown as InteractionResponse);
+}
+
 export function selectMenuResponse(customId: string, placeholder: string, options: Array<{
   label: string;
   value: string;

@@ -40,6 +40,9 @@ export interface DiscordInteraction {
     custom_id?: string;
     components?: DiscordModalComponent[];
     values?: string[];
+    resolved?: {
+      attachments?: Record<string, DiscordAttachment>;
+    };
   };
   guild_id?: string;
   channel_id?: string;
@@ -65,12 +68,32 @@ export interface DiscordUser {
 export interface DiscordModalComponent {
   type: number;
   components?: DiscordModalActionRowChild[];
+  component?: DiscordLabeledModalChild;
 }
 
 export interface DiscordModalActionRowChild {
   type: number;
   custom_id: string;
   value: string;
+}
+
+export interface DiscordLabeledModalChild {
+  type: number;
+  custom_id?: string;
+  value?: string;
+  values?: string[];
+}
+
+export interface DiscordAttachment {
+  id: string;
+  filename: string;
+  content_type?: string;
+  url: string;
+  proxy_url?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  ephemeral?: boolean;
 }
 
 // 내부 헬퍼 타입
