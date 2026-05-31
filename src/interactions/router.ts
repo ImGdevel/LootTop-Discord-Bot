@@ -1,19 +1,21 @@
-import {
-  handleSettings,
-} from "../commands/handlers.js";
+import { handleSettings } from "../commands/handlers.js";
 import {
   handleGoalCommand,
   handleGoalWriteButton,
   handleGoalWriteModal,
+  handleGoalProofTypeSelect,
+  handleGoalRestDaysSelect,
+  handleGoalSaveButton,
 } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
 import {
   handleCheckinCommand,
   handleCheckinButton,
   handleCheckinModal,
+  handleCheckinModalOpen,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
-import { BUTTON_IDS, COMMANDS, MODAL_IDS } from "../commands/definitions.js";
+import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -26,7 +28,7 @@ export function routeInteraction(
     case InteractionType.APPLICATION_COMMAND:
       return routeCommand(interaction, env, ctx);
     case InteractionType.MESSAGE_COMPONENT:
-      return routeButton(interaction, env, ctx);
+      return routeComponent(interaction, env, ctx);
     case InteractionType.MODAL_SUBMIT:
       return routeModal(interaction, env, ctx);
     default:
@@ -49,38 +51,44 @@ function routeCommand(
   }
 }
 
-function routeButton(
-  interaction: DiscordInteraction,
-  env: Env,
-  ctx: ExecutionContext
-): Response | null {
-  return routeV2Button(interaction, env, ctx);
-}
-
-function routeV2Button(
+function routeComponent(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
 ): Response | null {
   const customId = interaction.data?.custom_id ?? "";
+
+  // 목표 wizard
+  if (customId.startsWith("goal:create") || customId.startsWith("goal:edit")) {
+    return handleGoalWriteButton(interaction);
+  }
+  if (customId.startsWith("goal:proof:")) {
+    return handleGoalProofTypeSelect(interaction, env, ctx);
+  }
+  if (customId.startsWith("goal:rest:")) {
+    return handleGoalRestDaysSelect(interaction, env, ctx);
+  }
+  if (customId.startsWith("goal:save:")) {
+    return handleGoalSaveButton(interaction, env, ctx);
+  }
+
+  // 홈 버튼 → 목표/인증/리더보드 이동
   if (customId.startsWith("home:goal")) {
     return handleGoalCommand(interaction, env, ctx);
   }
-  if (customId.startsWith("home:checkin")) {
-    return handleCheckinCommand(interaction, env, ctx);
+  if (customId.startsWith("home:checkin") || customId.startsWith("checkin:submit")) {
+    return handleCheckinButton(interaction, env, ctx);
+  }
+  if (customId.startsWith("checkin:modal:open:")) {
+    return handleCheckinModalOpen(interaction);
   }
   if (customId.startsWith("home:leaderboard") || customId.startsWith("leaderboard:view")) {
     return handleLeaderboardCommand(interaction, env, ctx);
   }
-  if (customId.startsWith("goal:create") || customId.startsWith("goal:edit")) {
-    return handleGoalWriteButton(interaction);
-  }
-  if (customId.startsWith("checkin:submit")) {
-    return handleCheckinButton(interaction);
-  }
   if (customId.startsWith("home:refresh")) {
     return handleHomeCommand(interaction, env, ctx);
   }
+
   return null;
 }
 

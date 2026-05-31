@@ -39,6 +39,7 @@ export interface DiscordInteraction {
     name?: string;
     custom_id?: string;
     components?: DiscordModalComponent[];
+    values?: string[];
   };
   guild_id?: string;
   channel_id?: string;
@@ -48,6 +49,10 @@ export interface DiscordInteraction {
   };
   user?: DiscordUser;
   token: string;
+  message?: {
+    id: string;
+    channel_id: string;
+  };
 }
 
 export interface DiscordUser {

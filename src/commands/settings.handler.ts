@@ -49,33 +49,14 @@ async function processSettings(
   const guildId = interaction.guild_id!;
   const appId = env.DISCORD_APPLICATION_ID;
   const token = interaction.token;
-  const options = (interaction.data as any)?.options as any[] | undefined;
-  const subcommand = options?.[0]?.name as string | undefined;
 
   try {
+    const options = (interaction.data as any)?.options as any[] | undefined;
+    const subcommand = options?.[0]?.name as string | undefined;
+
     if (!subcommand || subcommand === "보기") {
       const settings = await fetchGuildSettings(env.DB, guildId);
       await sendFollowup(appId, token, formatSettings(settings), { ephemeral: true });
-      return;
-    }
-
-    if (subcommand === "시간") {
-      const subOptions = options?.[0]?.options as any[] | undefined;
-      const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
-      const time = subOptions?.find((o: any) => o.name === "시간")?.value as string;
-      const fieldMap: Record<string, SettingsField> = {
-        "목표생성": "goal_publish_time",
-        "인증시작": "checkin_thread_open_time",
-        "인증마감": "checkin_thread_close_time",
-        "리더보드생성": "leaderboard_publish_time",
-      };
-      const field = fieldMap[type];
-      if (!field) {
-        await sendFollowup(appId, token, "올바른 종류를 선택해 주세요.", { ephemeral: true });
-        return;
-      }
-      const result = await updateGuildSetting(env.DB, guildId, field, time);
-      await sendFollowup(appId, token, result.message, { ephemeral: true });
       return;
     }
 
@@ -83,6 +64,7 @@ async function processSettings(
       const subOptions = options?.[0]?.options as any[] | undefined;
       const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
       const channelId = subOptions?.find((o: any) => o.name === "채널")?.value as string;
+
       const fieldMap: Record<string, SettingsField> = {
         "스터디홈": "study_home_channel_id",
         "목표포럼": "goal_forum_channel_id",
@@ -91,12 +73,31 @@ async function processSettings(
       };
       const field = fieldMap[type];
       if (!field || !channelId) {
-        await sendFollowup(appId, token, "올바른 채널 종류와 값을 선택해 주세요.", {
-          ephemeral: true,
-        });
+        await sendFollowup(appId, token, "올바른 채널 종류와 채널을 선택해 주세요.", { ephemeral: true });
         return;
       }
       const result = await updateGuildSetting(env.DB, guildId, field, channelId);
+      await sendFollowup(appId, token, result.message, { ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "시간") {
+      const subOptions = options?.[0]?.options as any[] | undefined;
+      const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
+      const time = subOptions?.find((o: any) => o.name === "시간")?.value as string;
+
+      const fieldMap: Record<string, SettingsField> = {
+        "목표생성": "goal_publish_time",
+        "인증시작": "checkin_thread_open_time",
+        "인증마감": "checkin_thread_close_time",
+        "리더보드생성": "leaderboard_publish_time",
+      };
+      const field = fieldMap[type];
+      if (!field || !time) {
+        await sendFollowup(appId, token, "올바른 종류와 시간을 입력해 주세요.", { ephemeral: true });
+        return;
+      }
+      const result = await updateGuildSetting(env.DB, guildId, field, time);
       await sendFollowup(appId, token, result.message, { ephemeral: true });
       return;
     }
@@ -107,7 +108,7 @@ async function processSettings(
       try {
         Intl.DateTimeFormat(undefined, { timeZone: tz });
       } catch {
-        await sendFollowup(appId, token, "`" + tz + "`은 올바른 타임존이 아닙니다.\n예: `Asia/Seoul`, `UTC`", { ephemeral: true });
+        await sendFollowup(appId, token, "`" + tz + "`는 올바른 타임존이 아닙니다.\n예: `Asia/Seoul`, `UTC`", { ephemeral: true });
         return;
       }
       const result = await updateGuildSetting(env.DB, guildId, "timezone", tz);
@@ -115,9 +116,9 @@ async function processSettings(
       return;
     }
 
-    await sendFollowup(appId, token, "알 수 없는 설정 명령입니다.", { ephemeral: true });
+    await sendFollowup(appId, token, "알 수 없는 설정 명령어입니다.", { ephemeral: true });
   } catch (err) {
-    console.error("[settings] error:", err);
+    console.error("[settings.handler] error:", err);
     await sendFollowup(appId, token, "설정 처리 중 오류가 발생했습니다.", { ephemeral: true });
   }
 }

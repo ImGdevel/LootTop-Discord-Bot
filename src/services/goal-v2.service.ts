@@ -14,22 +14,21 @@ import { getWeekEndDate, getWeekStartDate, toLocalDateString } from "../domain/d
 import { buildGoalSummaryCard } from "../ui/cards/goal-summary.card.js";
 import { MessageFlags } from "../types.js";
 import { ensureCurrentWeeklyGoalCycle } from "./goal-cycle-v2.service.js";
-import type { UserDailyGoalItemRow, UserDailyGoalRow, WeeklyGoalCycleRow } from "../db/types.js";
+import type { GoalProofType, UserDailyGoalItemRow, UserDailyGoalRow, WeeklyGoalCycleRow } from "../db/types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
+
+const PROOF_TYPE_LABELS: Record<GoalProofType, string> = {
+  text: "텍스트 인증",
+  url: "URL 인증",
+  image: "사진 인증 (링크)",
+  checkbox: "체크 완료",
+};
 
 export interface CurrentGoalBundle {
   cycle: WeeklyGoalCycleRow;
   goal: UserDailyGoalRow | null;
   items: UserDailyGoalItemRow[];
-}
-
-function parseRestDays(raw: string): string[] {
-  const tokens = raw
-    .split(/[,\s]+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
-  return tokens.length > 0 ? tokens : ["토", "일"];
 }
 
 export async function getCurrentGoalBundle(
@@ -42,7 +41,8 @@ export async function getCurrentGoalBundle(
   const localDate = toLocalDateString(new Date(), timezone);
   const weekStartDate = getWeekStartDate(localDate);
   const weekEndDate = getWeekEndDate(weekStartDate);
-  const cycle: WeeklyGoalCycleRow = {
+
+  const fallbackCycle: WeeklyGoalCycleRow = {
     id: 0,
     guild_id: guildId,
     week_start_date: weekStartDate,
@@ -54,9 +54,9 @@ export async function getCurrentGoalBundle(
     created_at: "",
   };
 
-  const actualCycle = await import("../db/weekly-goal-cycles.repository.js")
-    .then((m) => m.getWeeklyGoalCycle(db, guildId, weekStartDate));
-  const resolvedCycle = actualCycle ?? cycle;
+  const { getWeeklyGoalCycle } = await import("../db/weekly-goal-cycles.repository.js");
+  const actualCycle = await getWeeklyGoalCycle(db, guildId, weekStartDate);
+  const resolvedCycle = actualCycle ?? fallbackCycle;
   const goal = actualCycle
     ? await getUserDailyGoal(db, guildId, discordUserId, actualCycle.id)
     : null;
@@ -71,62 +71,106 @@ export async function saveCurrentUserGoalsV2(
   displayName: string,
   botToken: string,
   input: {
-    goals: string[];
-    restDaysRaw: string;
+    goalLabels: string[];
+    proofTypes: Record<string, string>;
+    restDays: string[];
   }
 ): Promise<{ success: boolean; message: string }> {
-  const cycle = await ensureCurrentWeeklyGoalCycle(db, guildId, botToken);
-  await upsertUser(db, guildId, discordUserId, displayName);
-
-  const goals = input.goals.map((goal) => goal.trim()).filter(Boolean);
-  if (goals.length === 0) {
+  const goalLabels = input.goalLabels.filter(Boolean);
+  if (goalLabels.length === 0) {
     return { success: false, message: "최소 1개의 데일리 목표를 입력해 주세요." };
   }
 
-  const restDays = parseRestDays(input.restDaysRaw);
+  let cycle: WeeklyGoalCycleRow;
+  try {
+    cycle = await ensureCurrentWeeklyGoalCycle(db, guildId, botToken);
+  } catch (err) {
+    // 포럼 채널 미설정 시 D1에만 저장하고 카드 게시 생략
+    console.warn("[goal-v2] ensureCurrentWeeklyGoalCycle failed:", err);
+    const settings = await getGuildSettings(db, guildId);
+    const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
+    const localDate = toLocalDateString(new Date(), timezone);
+    const weekStartDate = getWeekStartDate(localDate);
+    cycle = {
+      id: -1,
+      guild_id: guildId,
+      week_start_date: weekStartDate,
+      week_end_date: getWeekEndDate(weekStartDate),
+      forum_thread_id: "",
+      title: "",
+      status: "open",
+      published_at: "",
+      created_at: "",
+    };
+  }
+
+  await upsertUser(db, guildId, discordUserId, displayName);
+
+  // cycle.id === -1 이면 DB에 cycle이 없으므로 저장 불가
+  if (cycle.id === -1) {
+    return {
+      success: false,
+      message: "목표 포럼 채널이 설정되지 않았습니다. `/설정 채널 목표포럼`으로 채널을 먼저 설정해 주세요.",
+    };
+  }
+
   let userGoal = await getUserDailyGoal(db, guildId, discordUserId, cycle.id);
+  const restDaysJson = JSON.stringify(input.restDays.length > 0 ? input.restDays : ["토", "일"]);
+
   if (!userGoal) {
     userGoal = await insertUserDailyGoal(db, {
       guildId,
       discordUserId,
       weeklyGoalCycleId: cycle.id,
-      restDaysJson: JSON.stringify(restDays),
+      restDaysJson,
     });
   } else {
-    await updateUserDailyGoal(db, userGoal.id, {
-      restDaysJson: JSON.stringify(restDays),
-      status: "active",
-    });
+    await updateUserDailyGoal(db, userGoal.id, { restDaysJson, status: "active" });
   }
 
-  await replaceUserDailyGoalItems(
-    db,
-    userGoal.id,
-    goals.map((goal, index) => ({
-      sortOrder: index + 1,
-      label: goal,
-      proofType: "text",
-      required: true,
-    }))
-  );
+  const goalItems = goalLabels.map((label, index) => ({
+    sortOrder: index + 1,
+    label,
+    proofType: (input.proofTypes[String(index)] ?? "text") as GoalProofType,
+    required: true,
+  }));
 
-  const card = buildGoalSummaryCard({
-    memberDisplay: displayName,
-    weekLabel: "이번 주 목표",
-    periodLabel: cycle.week_start_date + " ~ " + cycle.week_end_date,
-    goals: goals.map((goal) => ({ label: goal, proofTypeLabel: "텍스트 인증" })),
-    restDaysLabel: restDays.join(", "),
-  });
+  await replaceUserDailyGoalItems(db, userGoal.id, goalItems);
 
-  const message = await createMessage(cycle.forum_thread_id, botToken, {
-    flags: MessageFlags.IS_COMPONENTS_V2,
-    components: card.components,
-  });
-  await updateUserDailyGoalMessageId(db, userGoal.id, message.id);
+  // 공개 목표 카드 게시
+  if (cycle.forum_thread_id) {
+    try {
+      const proofTypeLabels = goalItems.map((item) => ({
+        label: item.label,
+        proofTypeLabel: PROOF_TYPE_LABELS[item.proofType] ?? item.proofType,
+      }));
 
+      const card = buildGoalSummaryCard({
+        memberDisplay: displayName,
+        weekLabel: "이번 주 목표",
+        periodLabel: cycle.week_start_date + " ~ " + cycle.week_end_date,
+        goals: proofTypeLabels,
+        restDaysLabel: input.restDays.length > 0 ? input.restDays.join(", ") : "토, 일",
+        editButtonId: "goal:edit:self:current:1",
+      });
+
+      const message = await createMessage(cycle.forum_thread_id, botToken, {
+        flags: MessageFlags.IS_COMPONENTS_V2,
+        components: card.components,
+      });
+      await updateUserDailyGoalMessageId(db, userGoal.id, message.id);
+    } catch (err) {
+      console.error("[goal-v2] 카드 게시 실패:", err);
+    }
+  }
+
+  const restLabel = input.restDays.length > 0 ? input.restDays.join(", ") : "토, 일";
   return {
     success: true,
-    message: "V2 목표를 저장했습니다. 공개 목표 카드도 생성되었습니다.",
+    message:
+      "✅ **이번 주 목표가 저장되었습니다!**\n\n" +
+      goalLabels.map((g, i) => "**목표 " + (i + 1) + "**: " + g + " (" + (PROOF_TYPE_LABELS[(input.proofTypes[String(i)] ?? "text") as GoalProofType] ?? "텍스트 인증") + ")").join("\n") +
+      "\n**휴식일**: " + restLabel,
   };
 }
 
@@ -151,7 +195,7 @@ export async function getCurrentGoalSummaryState(
     restDays: JSON.parse(bundle.goal.rest_days_json) as string[],
     goals: bundle.items.map((item) => ({
       label: item.label,
-      proofTypeLabel: item.proof_type === "text" ? "텍스트 인증" : item.proof_type,
+      proofTypeLabel: PROOF_TYPE_LABELS[item.proof_type] ?? item.proof_type,
     })),
   };
 }

@@ -1,6 +1,5 @@
 /**
  * D1 테이블 Row 타입 정의
- * DB에서 꺼낸 raw row를 TypeScript로 표현한다.
  */
 
 export interface GuildSettingsRow {
@@ -55,6 +54,7 @@ export interface DailyCheckinRow {
   created_at: string;
 }
 
+// V2 types
 export type GoalProofType = "text" | "url" | "image" | "checkbox";
 
 export interface WeeklyGoalCycleRow {
@@ -131,5 +131,18 @@ export interface WeeklyLeaderboardCycleRow {
   forum_thread_id: string;
   title: string;
   published_at: string;
+  created_at: string;
+}
+
+// Wizard session
+export interface GoalWizardSessionRow {
+  id: string;
+  guild_id: string;
+  discord_user_id: string;
+  week_start_date: string;
+  goal_labels_json: string;
+  proof_types_json: string;
+  rest_days_json: string;
+  expires_at: string;
   created_at: string;
 }

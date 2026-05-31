@@ -1,22 +1,22 @@
 export const COMMAND_DEFINITIONS = [
   {
     name: "홈",
-    description: "스터디 홈 카드와 V2 채널 구조를 확인합니다.",
+    description: "스터디 홈 카드를 확인합니다.",
   },
   {
     name: "설정",
-    description: "(관리자) V2 서버 설정을 확인하거나 변경합니다.",
+    description: "(관리자) 서버 설정을 변경합니다.",
     default_member_permissions: "32",
     options: [
       {
         type: 1,
         name: "보기",
-        description: "현재 V2 서버 설정을 확인합니다.",
+        description: "현재 서버 설정을 확인합니다.",
       },
       {
         type: 1,
         name: "채널",
-        description: "기존 채널을 V2 운영 채널로 매핑합니다.",
+        description: "채널을 매핑합니다.",
         options: [
           {
             type: 3,
@@ -41,7 +41,7 @@ export const COMMAND_DEFINITIONS = [
       {
         type: 1,
         name: "시간",
-        description: "V2 스케줄 시간을 설정합니다.",
+        description: "스케줄 시간을 설정합니다.",
         options: [
           {
             type: 3,
@@ -58,7 +58,7 @@ export const COMMAND_DEFINITIONS = [
           {
             type: 3,
             name: "시간",
-            description: "설정할 시간 (HH:MM 형식, 예: 09:00)",
+            description: "설정할 시간 (HH:MM 형식)",
             required: true,
           },
         ],
@@ -85,6 +85,7 @@ export const COMMANDS = {
   SETTINGS: "설정",
 } as const;
 
+// V2 button IDs (prefix-matched in router)
 export const BUTTON_IDS = {
   GOAL_WRITE: "btn_goal_write_v2",
   CHECKIN_TODAY: "btn_checkin_today_v2",

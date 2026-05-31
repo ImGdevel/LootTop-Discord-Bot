@@ -5,15 +5,19 @@ import {
 import type { GuildSettingsRow } from "../db/types.js";
 
 export type SettingsField =
+  | "plan_reminder_channel_id"
+  | "checkin_channel_id"
+  | "leaderboard_channel_id"
+  | "plan_reminder_time"
+  | "checkin_reminder_time"
+  | "leaderboard_publish_time"
+  | "timezone"
   | "study_home_channel_id"
   | "goal_forum_channel_id"
-  | "checkin_channel_id"
   | "leaderboard_forum_channel_id"
   | "goal_publish_time"
   | "checkin_thread_open_time"
-  | "checkin_thread_close_time"
-  | "leaderboard_publish_time"
-  | "timezone";
+  | "checkin_thread_close_time";
 
 export interface SettingsUpdateResult {
   success: boolean;
@@ -34,10 +38,12 @@ export async function updateGuildSetting(
   value: string
 ): Promise<SettingsUpdateResult> {
   const timeFields: SettingsField[] = [
+    "plan_reminder_time",
+    "checkin_reminder_time",
+    "leaderboard_publish_time",
     "goal_publish_time",
     "checkin_thread_open_time",
     "checkin_thread_close_time",
-    "leaderboard_publish_time",
   ];
   if (timeFields.includes(field)) {
     if (!/^\d{2}:\d{2}$/.test(value)) {
@@ -51,24 +57,20 @@ export async function updateGuildSetting(
 
   await upsertGuildSettings(db, guildId, { [field]: value });
 
-  if (field === "goal_forum_channel_id") {
-    await upsertGuildSettings(db, guildId, { plan_reminder_channel_id: value });
-  }
-
-  if (field === "leaderboard_forum_channel_id") {
-    await upsertGuildSettings(db, guildId, { leaderboard_channel_id: value });
-  }
-
   const fieldLabel: Record<SettingsField, string> = {
+    plan_reminder_channel_id: "계획 리마인더 채널",
+    checkin_channel_id: "인증 채널",
+    leaderboard_channel_id: "리더보드 채널",
+    plan_reminder_time: "계획 리마인더 시간",
+    checkin_reminder_time: "인증 리마인더 시간",
+    leaderboard_publish_time: "리더보드 게시 시간",
+    timezone: "타임존",
     study_home_channel_id: "스터디 홈 채널",
     goal_forum_channel_id: "목표 포럼 채널",
-    checkin_channel_id: "인증 채널",
     leaderboard_forum_channel_id: "리더보드 포럼 채널",
     goal_publish_time: "목표 생성 시간",
     checkin_thread_open_time: "인증 시작 시간",
     checkin_thread_close_time: "인증 마감 시간",
-    leaderboard_publish_time: "리더보드 생성 시간",
-    timezone: "타임존",
   };
 
   const formattedValue =
@@ -88,19 +90,19 @@ export function formatSettings(settings: GuildSettingsRow | null): string {
   const t = (v: string | null) => v ?? "미설정";
 
   return [
-    "**현재 V2 서버 설정**",
+    "**현재 서버 설정**",
     "타임존: `" + settings.timezone + "`",
     "",
     "**채널**",
     "스터디 홈: " + ch(settings.study_home_channel_id),
     "목표 포럼: " + ch(settings.goal_forum_channel_id),
-    "인증 채널: " + ch(settings.checkin_channel_id),
-    "리더보드 포럼: " + ch(settings.leaderboard_forum_channel_id ?? settings.leaderboard_channel_id),
+    "인증: " + ch(settings.checkin_channel_id),
+    "리더보드 포럼: " + ch(settings.leaderboard_forum_channel_id),
     "",
-    "**자동 생성 시간 (서버 타임존 기준)**",
+    "**스케줄 시간 (서버 타임존 기준)**",
     "목표 생성: " + t(settings.goal_publish_time),
     "인증 시작: " + t(settings.checkin_thread_open_time),
     "인증 마감: " + t(settings.checkin_thread_close_time),
-    "리더보드 생성: " + t(settings.leaderboard_publish_time),
+    "리더보드 게시: " + t(settings.leaderboard_publish_time),
   ].join("\n");
 }

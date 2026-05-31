@@ -21,6 +21,13 @@ export function deferredEphemeralResponse(): Response {
   });
 }
 
+// 메시지 컴포넌트 상호작용에서 원본 메시지를 업데이트할 때 (로딩 없이)
+export function deferredUpdateResponse(): Response {
+  return jsonResponse({
+    type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+  });
+}
+
 export function modalResponse(customId: string, title: string, fields: ModalField[]): Response {
   return jsonResponse({
     type: InteractionResponseType.MODAL,
@@ -44,6 +51,31 @@ export function modalResponse(customId: string, title: string, fields: ModalFiel
   } as unknown as InteractionResponse);
 }
 
+export function selectMenuResponse(customId: string, placeholder: string, options: Array<{
+  label: string;
+  value: string;
+  description?: string;
+  default?: boolean;
+}>, minValues = 1, maxValues = 1): Response {
+  return jsonResponse({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      flags: MessageFlags.EPHEMERAL,
+      components: [{
+        type: 1,
+        components: [{
+          type: 3,
+          custom_id: customId,
+          placeholder,
+          min_values: minValues,
+          max_values: maxValues,
+          options,
+        }],
+      }],
+    },
+  } as unknown as InteractionResponse);
+}
+
 export function pongResponse(): Response {
   return jsonResponse({ type: InteractionResponseType.PONG });
 }
@@ -60,7 +92,7 @@ export async function sendFollowup(
   if (options.ephemeral) flags |= MessageFlags.EPHEMERAL;
   if (flags !== 0) body.flags = flags;
   if (options.embeds) body.embeds = options.embeds;
-  if (options.components) body.components = options.components;
+  if (options.components != null) body.components = options.components;
 
   const res = await fetch(
     "https://discord.com/api/v10/webhooks/" + applicationId + "/" + interactionToken,
@@ -74,6 +106,32 @@ export async function sendFollowup(
   if (!res.ok) {
     const text = await res.text();
     throw new Error("Discord followup failed: " + res.status + " " + text);
+  }
+}
+
+// DEFERRED_UPDATE_MESSAGE 이후 원본 메시지를 수정할 때
+export async function updateFollowup(
+  applicationId: string,
+  interactionToken: string,
+  content?: string,
+  options: { components?: unknown[] } = {}
+): Promise<void> {
+  const body: Record<string, unknown> = {};
+  if (content != null) body.content = content;
+  if (options.components != null) body.components = options.components;
+
+  const res = await fetch(
+    "https://discord.com/api/v10/webhooks/" + applicationId + "/" + interactionToken + "/messages/@original",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error("Discord update followup failed: " + res.status + " " + text);
   }
 }
 
