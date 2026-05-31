@@ -6,11 +6,15 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "register": "tsx src/scripts/register-commands.ts",
-    "type-check": "tsc --noEmit"
+    "prepare": "husky",
+    "type-check": "tsc --noEmit",
+    "validate:repo": "node scripts/validate-repo.mjs",
+    "validate:commit-message": "node scripts/validate-commit-message.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260531.1",
     "@types/node": "^25.9.1",
+    "husky": "^9.1.7",
     "tsx": "^4.19.2",
     "typescript": "^5.8.3",
     "wrangler": "^4.95.0"
