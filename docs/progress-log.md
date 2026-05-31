@@ -22,11 +22,17 @@
 - Phase 5: `/주간계획`, `btn_plan_write` 버튼, `modal_plan_write` 모달, PlanService
 - Phase 6: `/인증`, `btn_checkin_today` 버튼, `modal_checkin_today` 모달, CheckinService
 - Phase 7: `/리더보드`, `/내계획`, `/내인증현황`, LeaderboardService
+- Phase 8: Cron 핸들러, ReminderService (계획/인증 리마인더, 자동 리더보드 게시)
 
 ## 다음 작업
 
-- Phase 8: Cron 자동화, ReminderService
-- Phase 9: 안정화
+- Phase 9: 안정화 (에러 메시지 정리, 엣지 케이스, 배포 후 수동 검증)
+
+## 배포 방법
+
+```bash
+npx wrangler deploy
+```
 
 ## 배포 및 Discord 연동
 

@@ -1,19 +1,16 @@
 import { verifyDiscordRequest } from "./discord/verify.js";
 import { pongResponse } from "./discord/response.js";
 import { routeInteraction } from "./interactions/router.js";
+import { runCronForAllGuilds } from "./services/reminder.service.js";
 import { InteractionType, InteractionResponseType, MessageFlags } from "./types.js";
 import type { Env, DiscordInteraction } from "./types.js";
 
 export default {
-  /**
-   * HTTP 핸들러 - Discord Interaction Webhook 수신
-   */
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    // Discord 서명 검증
     const { valid, body } = await verifyDiscordRequest(request, env.DISCORD_PUBLIC_KEY);
     if (!valid) {
       return new Response("Unauthorized", { status: 401 });
@@ -26,12 +23,10 @@ export default {
       return new Response("Bad Request", { status: 400 });
     }
 
-    // PING -> PONG (Discord 엔드포인트 검증용)
     if (interaction.type === InteractionType.PING) {
       return pongResponse();
     }
 
-    // guild_id 없는 DM Interaction 차단
     if (!interaction.guild_id) {
       return new Response(
         JSON.stringify({
@@ -42,7 +37,6 @@ export default {
       );
     }
 
-    // Interaction 라우팅
     const response = routeInteraction(interaction, env, ctx);
     if (!response) {
       return new Response(
@@ -57,16 +51,12 @@ export default {
     return response;
   },
 
-  /**
-   * Cron 핸들러 - 스케줄 자동화
-   * Phase 8에서 구현 예정
-   */
   async scheduled(
-    _event: ScheduledEvent,
-    _env: Env,
-    _ctx: ExecutionContext
+    event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext
   ): Promise<void> {
-    // TODO Phase 8: 다중 길드 Cron 처리
-    console.log("Cron triggered:", _event.cron);
+    console.log("Cron triggered:", event.cron);
+    ctx.waitUntil(runCronForAllGuilds(env.DB, env.DISCORD_BOT_TOKEN));
   },
 };
