@@ -49,6 +49,25 @@ export async function insertUserDailyGoal(
   return goal;
 }
 
+export async function updateUserDailyGoal(
+  db: D1Database,
+  id: number,
+  input: {
+    restDaysJson: string;
+    status?: "active" | "archived";
+  }
+): Promise<void> {
+  const now = new Date().toISOString();
+  await db
+    .prepare(`
+      UPDATE user_daily_goals
+      SET rest_days_json = ?, status = ?, updated_at = ?
+      WHERE id = ?
+    `)
+    .bind(input.restDaysJson, input.status ?? "active", now, id)
+    .run();
+}
+
 export async function updateUserDailyGoalMessageId(
   db: D1Database,
   id: number,
@@ -119,5 +138,20 @@ export async function getUserDailyGoalItems(
     `)
     .bind(userDailyGoalId)
     .all<UserDailyGoalItemRow>();
+  return result.results;
+}
+
+export async function getUserDailyGoalsForCycle(
+  db: D1Database,
+  weeklyGoalCycleId: number
+): Promise<UserDailyGoalRow[]> {
+  const result = await db
+    .prepare(`
+      SELECT * FROM user_daily_goals
+      WHERE weekly_goal_cycle_id = ? AND status = 'active'
+      ORDER BY created_at ASC
+    `)
+    .bind(weeklyGoalCycleId)
+    .all<UserDailyGoalRow>();
   return result.results;
 }

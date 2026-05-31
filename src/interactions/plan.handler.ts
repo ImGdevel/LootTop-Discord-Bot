@@ -1,35 +1,26 @@
-import { BUTTON_IDS, MODAL_IDS, MODAL_FIELDS } from "../commands/definitions.js";
-import {
-  deferredEphemeralResponse,
-  modalResponse,
-  sendFollowup,
-} from "../discord/response.js";
+import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
+import { deferredEphemeralResponse, modalResponse, sendFollowup } from "../discord/response.js";
 import { buildCurrentWeeklyGoalFlow } from "../flows/goal.flow.js";
-import { fetchCurrentWeekPlan, savePlan } from "../services/plan.service.js";
+import { saveCurrentUserGoalsV2 } from "../services/goal-v2.service.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-/**
- * /주간계획 커맨드
- * - 계획이 있으면 현재 계획 표시 + 수정 버튼
- * - 계획이 없으면 계획 작성 버튼
- */
-export function handleWeeklyPlanCommand(
+export function handleGoalCommand(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
 ): Response {
-  ctx.waitUntil(handleWeeklyPlanAsync(interaction, env));
+  ctx.waitUntil(handleGoalCommandAsync(interaction, env));
   return deferredEphemeralResponse();
 }
 
-async function handleWeeklyPlanAsync(
+async function handleGoalCommandAsync(
   interaction: DiscordInteraction,
   env: Env
 ): Promise<void> {
   const guildId = interaction.guild_id;
   const user = interaction.member?.user ?? interaction.user;
-
   if (!guildId || !user) return;
+
   const payload = await buildCurrentWeeklyGoalFlow(env.DB, guildId, user.id);
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, payload.content, {
     flags: payload.flags,
@@ -37,47 +28,54 @@ async function handleWeeklyPlanAsync(
   });
 }
 
-/**
- * btn_plan_write 버튼 클릭 → 계획 작성 모달 응답
- */
-export function handlePlanWriteButton(_interaction: DiscordInteraction): Response {
-  return modalResponse(MODAL_IDS.PLAN_WRITE, "이번 주 계획 작성", [
+export function handleGoalWriteButton(_interaction: DiscordInteraction): Response {
+  return modalResponse(MODAL_IDS.GOAL_WRITE, "이번 주 데일리 목표 작성", [
     {
-      label: "이번 주 목표",
-      customId: MODAL_FIELDS.PLAN.GOAL_TEXT,
-      style: 2,
-      placeholder: "이번 주 목표를 입력해 주세요.",
+      label: "목표 1",
+      customId: MODAL_FIELDS.GOAL.GOAL_1,
+      style: 1,
+      placeholder: "예: 6시간 공부",
       required: true,
     },
     {
-      label: "목표 인증 횟수",
-      customId: MODAL_FIELDS.PLAN.TARGET_COUNT,
+      label: "목표 2",
+      customId: MODAL_FIELDS.GOAL.GOAL_2,
       style: 1,
-      placeholder: "예: 5",
-      required: true,
+      placeholder: "예: 독서 30분",
+      required: false,
+    },
+    {
+      label: "목표 3",
+      customId: MODAL_FIELDS.GOAL.GOAL_3,
+      style: 1,
+      placeholder: "예: 9시 기상",
+      required: false,
+    },
+    {
+      label: "휴식일",
+      customId: MODAL_FIELDS.GOAL.REST_DAYS,
+      style: 1,
+      placeholder: "예: 토,일",
+      required: false,
     },
   ]);
 }
 
-/**
- * modal_plan_write 제출 → 계획 저장
- */
-export function handlePlanWriteModal(
+export function handleGoalWriteModal(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
 ): Response {
-  ctx.waitUntil(handlePlanWriteModalAsync(interaction, env));
+  ctx.waitUntil(handleGoalWriteModalAsync(interaction, env));
   return deferredEphemeralResponse();
 }
 
-async function handlePlanWriteModalAsync(
+async function handleGoalWriteModalAsync(
   interaction: DiscordInteraction,
   env: Env
 ): Promise<void> {
   const guildId = interaction.guild_id;
   const user = interaction.member?.user ?? interaction.user;
-
   if (!guildId || !user) return;
 
   const components = interaction.data?.components ?? [];
@@ -90,19 +88,21 @@ async function handlePlanWriteModalAsync(
     return "";
   };
 
-  const goalText = getValue(MODAL_FIELDS.PLAN.GOAL_TEXT).trim();
-  const targetCountRaw = getValue(MODAL_FIELDS.PLAN.TARGET_COUNT).trim();
-  const targetCount = parseInt(targetCountRaw, 10);
-
-  const displayName = user.global_name ?? user.username;
-
-  const result = await savePlan(env.DB, {
+  const result = await saveCurrentUserGoalsV2(
+    env.DB,
     guildId,
-    discordUserId: user.id,
-    displayName,
-    goalText,
-    targetCount,
-  });
+    user.id,
+    user.global_name ?? user.username,
+    env.DISCORD_BOT_TOKEN,
+    {
+      goals: [
+        getValue(MODAL_FIELDS.GOAL.GOAL_1),
+        getValue(MODAL_FIELDS.GOAL.GOAL_2),
+        getValue(MODAL_FIELDS.GOAL.GOAL_3),
+      ],
+      restDaysRaw: getValue(MODAL_FIELDS.GOAL.REST_DAYS),
+    }
+  );
 
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, result.message, {
     ephemeral: true,

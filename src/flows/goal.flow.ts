@@ -1,31 +1,20 @@
-import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { buildGoalSummaryCard } from "../ui/cards/goal-summary.card.js";
 import { buildWeeklyGoalThreadIntroCard } from "../ui/cards/weekly-goal-thread.card.js";
 import { V2_BUTTON_IDS } from "../ui/builders/ids.js";
 import { MessageFlags } from "../types.js";
-import { fetchCurrentWeekPlan } from "../services/plan.service.js";
-import { toLocalDateString, getWeekStartDate, getWeekEndDate } from "../domain/date.js";
-
-const DEFAULT_TIMEZONE = "Asia/Seoul";
+import { getCurrentGoalSummaryState } from "../services/goal-v2.service.js";
 
 export async function buildCurrentWeeklyGoalFlow(
   db: D1Database,
   guildId: string,
   discordUserId: string
 ): Promise<{ content?: string; flags: number; components: unknown[] }> {
-  const settings = await getGuildSettings(db, guildId);
-  const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
-  const localDateStr = toLocalDateString(new Date(), timezone);
-  const weekStartDate = getWeekStartDate(localDateStr);
-  const weekEndDate = getWeekEndDate(weekStartDate);
-  const weekLabel = "이번 주";
-  const periodLabel = weekStartDate + " ~ " + weekEndDate;
-  const plan = await fetchCurrentWeekPlan(db, guildId, discordUserId);
+  const state = await getCurrentGoalSummaryState(db, guildId, discordUserId);
 
-  if (!plan) {
+  if (!state) {
     const card = buildWeeklyGoalThreadIntroCard({
-      weekLabel,
-      periodLabel,
+      weekLabel: "이번 주 목표",
+      periodLabel: "현재 주차",
       defaultRestDaysLabel: "토요일, 일요일",
       createGoalButtonId: V2_BUTTON_IDS.GOAL_CREATE,
     });
@@ -36,16 +25,11 @@ export async function buildCurrentWeeklyGoalFlow(
   }
 
   const card = buildGoalSummaryCard({
-    memberDisplay: "내 목표",
-    weekLabel,
-    periodLabel,
-    goals: [
-      {
-        label: plan.goal_text,
-        proofTypeLabel: plan.target_count + "회 인증",
-      },
-    ],
-    restDaysLabel: "미설정",
+    memberDisplay: state.displayName,
+    weekLabel: "이번 주 목표",
+    periodLabel: state.weekStartDate + " ~ " + state.weekEndDate,
+    goals: state.goals,
+    restDaysLabel: state.restDays.join(", "),
     editButtonId: V2_BUTTON_IDS.GOAL_EDIT,
   });
 

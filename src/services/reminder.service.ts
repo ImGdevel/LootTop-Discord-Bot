@@ -1,11 +1,11 @@
 import { getAllGuildSettings } from "../db/guild-settings.repository.js";
-import { sendChannelMessage } from "../discord/response.js";
-import { buildLeaderboard, formatLeaderboard } from "./leaderboard.service.js";
 import { isScheduledTime } from "../domain/date.js";
 import type { GuildSettingsRow } from "../db/types.js";
-import { BUTTON_IDS } from "../commands/definitions.js";
+import { ensureCurrentWeeklyGoalCycle } from "./goal-cycle-v2.service.js";
+import { closeExpiredCheckinCycles, ensureTodayCheckinCycle } from "./checkin-cycle-v2.service.js";
+import { ensureWeeklyLeaderboardCycle } from "./leaderboard-cycle-v2.service.js";
 
-type CronAction = "plan_reminder" | "checkin_reminder" | "leaderboard";
+type CronAction = "goal_cycle" | "checkin_open" | "checkin_close" | "leaderboard_cycle";
 
 /**
  * 현재 UTC 시각 기준으로 각 길드의 설정 시간과 비교해 실행할 액션을 결정한다.
@@ -13,30 +13,22 @@ type CronAction = "plan_reminder" | "checkin_reminder" | "leaderboard";
  */
 function detectAction(settings: GuildSettingsRow, nowUtc: Date): CronAction | null {
   const tz = settings.timezone;
+  const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
 
-  // 월요일 계획 리마인더
-  if (settings.plan_reminder_time) {
-    const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
-    if (localNow.getDay() === 1 && isScheduledTime(nowUtc, settings.plan_reminder_time, tz)) {
-      return "plan_reminder";
-    }
+  if (localNow.getDay() === 0 && isScheduledTime(nowUtc, settings.goal_publish_time ?? "18:00", tz)) {
+    return "goal_cycle";
   }
 
-  // 화~일 인증 리마인더
-  if (settings.checkin_reminder_time) {
-    const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
-    const day = localNow.getDay();
-    if (day !== 1 && isScheduledTime(nowUtc, settings.checkin_reminder_time, tz)) {
-      return "checkin_reminder";
-    }
+  if (isScheduledTime(nowUtc, settings.checkin_thread_open_time ?? "04:00", tz)) {
+    return "checkin_open";
   }
 
-  // 일요일 리더보드 자동 게시
-  if (settings.leaderboard_publish_time) {
-    const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
-    if (localNow.getDay() === 0 && isScheduledTime(nowUtc, settings.leaderboard_publish_time, tz)) {
-      return "leaderboard";
-    }
+  if (isScheduledTime(nowUtc, settings.checkin_thread_close_time ?? "04:00", tz)) {
+    return "checkin_close";
+  }
+
+  if (localNow.getDay() === 1 && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
+    return "leaderboard_cycle";
   }
 
   return null;
@@ -73,46 +65,22 @@ async function dispatchAction(
   settings: GuildSettingsRow,
   action: CronAction
 ): Promise<void> {
-  if (action === "plan_reminder") {
-    const channelId = settings.plan_reminder_channel_id;
-    if (!channelId) {
-      console.log("plan_reminder_channel_id not set for guild " + settings.guild_id + ", skip");
-      return;
-    }
-    const content = "📅 **이번 주 계획을 작성할 시간입니다!**\n아래 버튼을 눌러 이번 주 목표를 입력해 주세요.";
-    const components = [
-      {
-        type: 1,
-        components: [{ type: 2, style: 1, label: "계획 작성", custom_id: BUTTON_IDS.PLAN_WRITE }],
-      },
-    ];
-    await sendChannelMessage(channelId, botToken, content, components);
+  if (action === "goal_cycle") {
+    await ensureCurrentWeeklyGoalCycle(db, settings.guild_id, botToken);
+    return;
   }
 
-  if (action === "checkin_reminder") {
-    const channelId = settings.checkin_channel_id;
-    if (!channelId) {
-      console.log("checkin_channel_id not set for guild " + settings.guild_id + ", skip");
-      return;
-    }
-    const content = "✅ **오늘의 학습 인증 시간입니다!**\n아래 버튼을 눌러 오늘 한 일을 기록해 주세요.";
-    const components = [
-      {
-        type: 1,
-        components: [{ type: 2, style: 1, label: "오늘 인증", custom_id: BUTTON_IDS.CHECKIN_TODAY }],
-      },
-    ];
-    await sendChannelMessage(channelId, botToken, content, components);
+  if (action === "checkin_open") {
+    await ensureTodayCheckinCycle(db, settings.guild_id, botToken);
+    return;
   }
 
-  if (action === "leaderboard") {
-    const channelId = settings.leaderboard_channel_id;
-    if (!channelId) {
-      console.log("leaderboard_channel_id not set for guild " + settings.guild_id + ", skip");
-      return;
-    }
-    const result = await buildLeaderboard(db, settings.guild_id);
-    const message = "🏆 **이번 주 최종 리더보드**\n\n" + formatLeaderboard(result);
-    await sendChannelMessage(channelId, botToken, message);
+  if (action === "checkin_close") {
+    await closeExpiredCheckinCycles(db, botToken, new Date().toISOString());
+    return;
+  }
+
+  if (action === "leaderboard_cycle") {
+    await ensureWeeklyLeaderboardCycle(db, settings.guild_id, botToken);
   }
 }

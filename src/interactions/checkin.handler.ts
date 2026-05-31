@@ -1,10 +1,7 @@
-import { BUTTON_IDS, MODAL_IDS, MODAL_FIELDS } from "../commands/definitions.js";
-import {
-  deferredEphemeralResponse,
-  modalResponse,
-  sendFollowup,
-} from "../discord/response.js";
-import { submitCheckin } from "../services/checkin.service.js";
+import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
+import { deferredEphemeralResponse, modalResponse, sendFollowup } from "../discord/response.js";
+import { buildTodayCheckinFlow } from "../flows/checkin.flow.js";
+import { getTodayCheckinContext, submitTodayCheckinV2 } from "../services/checkin-v2.service.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
 export function handleCheckinCommand(
@@ -12,23 +9,50 @@ export function handleCheckinCommand(
   env: Env,
   ctx: ExecutionContext
 ): Response {
-  return handleCheckinButton(interaction);
+  ctx.waitUntil(handleCheckinCommandAsync(interaction, env));
+  return deferredEphemeralResponse();
 }
 
-export function handleCheckinButton(interaction: DiscordInteraction): Response {
+async function handleCheckinCommandAsync(
+  interaction: DiscordInteraction,
+  env: Env
+): Promise<void> {
+  const guildId = interaction.guild_id;
+  const user = interaction.member?.user ?? interaction.user;
+  if (!guildId || !user) return;
+
+  const payload = await buildTodayCheckinFlow(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+    flags: payload.flags,
+    components: payload.components,
+  });
+}
+
+export function handleCheckinButton(_interaction: DiscordInteraction): Response {
+  return openCheckinModal(["목표 1", "목표 2", "목표 3"]);
+}
+
+export function openCheckinModal(labels: string[]): Response {
   return modalResponse(MODAL_IDS.CHECKIN_TODAY, "오늘 인증", [
     {
-      label: "오늘 한 일",
-      customId: MODAL_FIELDS.CHECKIN.CONTENT,
-      style: 2,
+      label: labels[0] ?? "항목 1",
+      customId: MODAL_FIELDS.CHECKIN.ITEM_1,
+      style: 1,
       placeholder: "오늘 수행한 내용을 입력해 주세요.",
-      required: true,
+      required: false,
     },
     {
-      label: "참고 링크 또는 메모",
-      customId: MODAL_FIELDS.CHECKIN.PROOF_URL,
+      label: labels[1] ?? "항목 2",
+      customId: MODAL_FIELDS.CHECKIN.ITEM_2,
       style: 1,
-      placeholder: "URL 또는 자유 텍스트 (선택)",
+      placeholder: "오늘 수행한 내용을 입력해 주세요.",
+      required: false,
+    },
+    {
+      label: labels[2] ?? "항목 3",
+      customId: MODAL_FIELDS.CHECKIN.ITEM_3,
+      style: 1,
+      placeholder: "오늘 수행한 내용을 입력해 주세요.",
       required: false,
     },
   ]);
@@ -51,9 +75,9 @@ async function handleCheckinModalAsync(
   const user = interaction.member?.user ?? interaction.user;
   if (!guildId || !user) return;
 
-  const modalComponents = interaction.data?.components ?? [];
+  const components = interaction.data?.components ?? [];
   const getValue = (fieldId: string): string => {
-    for (const row of modalComponents) {
+    for (const row of components) {
       for (const comp of row.components ?? []) {
         if (comp.custom_id === fieldId) return comp.value;
       }
@@ -61,24 +85,20 @@ async function handleCheckinModalAsync(
     return "";
   };
 
-  const content = getValue(MODAL_FIELDS.CHECKIN.CONTENT).trim();
-  const proofUrl = getValue(MODAL_FIELDS.CHECKIN.PROOF_URL).trim() || null;
-  const displayName = user.global_name ?? user.username;
-
-  const result = await submitCheckin(env.DB, {
+  const result = await submitTodayCheckinV2(
+    env.DB,
     guildId,
-    discordUserId: user.id,
-    displayName,
-    content,
-    proofUrl,
-  });
-
-  const planWriteButton: unknown[] = result.status === "no_plan"
-    ? [{ type: 1, components: [{ type: 2, style: 1, label: "계획 작성", custom_id: BUTTON_IDS.PLAN_WRITE }] }]
-    : [];
+    user.id,
+    user.global_name ?? user.username,
+    env.DISCORD_BOT_TOKEN,
+    [
+      getValue(MODAL_FIELDS.CHECKIN.ITEM_1),
+      getValue(MODAL_FIELDS.CHECKIN.ITEM_2),
+      getValue(MODAL_FIELDS.CHECKIN.ITEM_3),
+    ]
+  );
 
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, result.message, {
     ephemeral: true,
-    components: planWriteButton.length > 0 ? planWriteButton : undefined,
   });
 }

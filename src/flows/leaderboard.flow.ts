@@ -1,13 +1,14 @@
-import { buildLeaderboard } from "../services/leaderboard.service.js";
+import { buildLeaderboardV2 } from "../services/leaderboard-v2.service.js";
 import { buildLeaderboardCard } from "../ui/cards/leaderboard.card.js";
 import { V2_BUTTON_IDS } from "../ui/builders/ids.js";
 import { MessageFlags } from "../types.js";
 
 export async function buildLeaderboardFlow(
   db: D1Database,
-  guildId: string
+  guildId: string,
+  weekStartDate?: string
 ): Promise<{ flags: number; components: unknown[] }> {
-  const result = await buildLeaderboard(db, guildId);
+  const result = await buildLeaderboardV2(db, guildId, weekStartDate);
   const entries = result.entries;
   const average = entries.length === 0
     ? 0
@@ -29,7 +30,7 @@ export async function buildLeaderboardFlow(
     rank: entry.rank,
     display: entry.displayName,
     rateLabel: entry.achievementRate + "%",
-    progressLabel: entry.checkinCount + "/" + entry.targetCount,
+    progressLabel: entry.completionCount + "/" + entry.targetCount,
   }));
 
   const card = buildLeaderboardCard({

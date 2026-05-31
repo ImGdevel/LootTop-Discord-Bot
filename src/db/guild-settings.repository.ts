@@ -25,8 +25,10 @@ export async function upsertGuildSettings(
         INSERT INTO guild_settings
           (guild_id, timezone, plan_reminder_channel_id, checkin_channel_id,
            leaderboard_channel_id, plan_reminder_time, checkin_reminder_time,
-           leaderboard_publish_time, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           leaderboard_publish_time, study_home_channel_id, goal_forum_channel_id,
+           leaderboard_forum_channel_id, goal_publish_time, checkin_thread_open_time,
+           checkin_thread_close_time, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         guildId,
@@ -34,9 +36,15 @@ export async function upsertGuildSettings(
         fields.plan_reminder_channel_id ?? null,
         fields.checkin_channel_id ?? null,
         fields.leaderboard_channel_id ?? null,
-        fields.plan_reminder_time ?? null,
+        fields.plan_reminder_time ?? "09:00",
         fields.checkin_reminder_time ?? null,
-        fields.leaderboard_publish_time ?? null,
+        fields.leaderboard_publish_time ?? "00:00",
+        fields.study_home_channel_id ?? null,
+        fields.goal_forum_channel_id ?? null,
+        fields.leaderboard_forum_channel_id ?? null,
+        fields.goal_publish_time ?? "18:00",
+        fields.checkin_thread_open_time ?? "04:00",
+        fields.checkin_thread_close_time ?? "04:00",
         now,
         now
       )
@@ -48,7 +56,9 @@ export async function upsertGuildSettings(
         UPDATE guild_settings SET
           timezone = ?, plan_reminder_channel_id = ?, checkin_channel_id = ?,
           leaderboard_channel_id = ?, plan_reminder_time = ?, checkin_reminder_time = ?,
-          leaderboard_publish_time = ?, updated_at = ?
+          leaderboard_publish_time = ?, study_home_channel_id = ?, goal_forum_channel_id = ?,
+          leaderboard_forum_channel_id = ?, goal_publish_time = ?, checkin_thread_open_time = ?,
+          checkin_thread_close_time = ?, updated_at = ?
         WHERE guild_id = ?
       `)
       .bind(
@@ -59,6 +69,12 @@ export async function upsertGuildSettings(
         merged.plan_reminder_time,
         merged.checkin_reminder_time,
         merged.leaderboard_publish_time,
+        merged.study_home_channel_id,
+        merged.goal_forum_channel_id,
+        merged.leaderboard_forum_channel_id,
+        merged.goal_publish_time,
+        merged.checkin_thread_open_time,
+        merged.checkin_thread_close_time,
         now,
         guildId
       )

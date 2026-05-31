@@ -138,3 +138,36 @@ export async function getValidEntryItemCountsByGoalIds(
     .all<{ goal_item_id: number; count: number }>();
   return result.results;
 }
+
+export async function getWeeklyGoalCompletionCounts(
+  db: D1Database,
+  guildId: string,
+  weekStartDate: string,
+  weekEndDate: string
+): Promise<Array<{ discord_user_id: string; goal_item_id: number; count: number }>> {
+  const result = await db
+    .prepare(`
+      SELECT
+        e.discord_user_id as discord_user_id,
+        i.goal_item_id as goal_item_id,
+        COUNT(DISTINCT c.checkin_date || ':' || i.goal_item_id || ':' || e.discord_user_id) as count
+      FROM daily_checkin_entry_items i
+      JOIN daily_checkin_entries e ON e.id = i.daily_checkin_entry_id
+      JOIN daily_checkin_cycles c ON c.id = e.daily_checkin_cycle_id
+      WHERE
+        e.guild_id = ?
+        AND e.status = 'valid'
+        AND c.checkin_date >= ?
+        AND c.checkin_date <= ?
+        AND (
+          (i.checked = 1)
+          OR i.text_value IS NOT NULL
+          OR i.url_value IS NOT NULL
+          OR i.attachment_url IS NOT NULL
+        )
+      GROUP BY e.discord_user_id, i.goal_item_id
+    `)
+    .bind(guildId, weekStartDate, weekEndDate)
+    .all<{ discord_user_id: string; goal_item_id: number; count: number }>();
+  return result.results;
+}

@@ -59,33 +59,15 @@ async function processSettings(
       return;
     }
 
-    if (subcommand === "채널") {
-      const subOptions = options?.[0]?.options as any[] | undefined;
-      const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
-      const channelId = subOptions?.find((o: any) => o.name === "채널")?.value as string;
-      const fieldMap: Record<string, SettingsField> = {
-        "계획리마인더": "plan_reminder_channel_id",
-        "인증리마인더": "checkin_channel_id",
-        "리더보드": "leaderboard_channel_id",
-      };
-      const field = fieldMap[type];
-      if (!field) {
-        await sendFollowup(appId, token, "올바른 채널 종류를 선택해 주세요.", { ephemeral: true });
-        return;
-      }
-      const result = await updateGuildSetting(env.DB, guildId, field, channelId);
-      await sendFollowup(appId, token, result.message, { ephemeral: true });
-      return;
-    }
-
     if (subcommand === "시간") {
       const subOptions = options?.[0]?.options as any[] | undefined;
       const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
       const time = subOptions?.find((o: any) => o.name === "시간")?.value as string;
       const fieldMap: Record<string, SettingsField> = {
-        "계획리마인더": "plan_reminder_time",
-        "인증리마인더": "checkin_reminder_time",
-        "리더보드": "leaderboard_publish_time",
+        "목표생성": "goal_publish_time",
+        "인증시작": "checkin_thread_open_time",
+        "인증마감": "checkin_thread_close_time",
+        "리더보드생성": "leaderboard_publish_time",
       };
       const field = fieldMap[type];
       if (!field) {
@@ -93,6 +75,28 @@ async function processSettings(
         return;
       }
       const result = await updateGuildSetting(env.DB, guildId, field, time);
+      await sendFollowup(appId, token, result.message, { ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "채널") {
+      const subOptions = options?.[0]?.options as any[] | undefined;
+      const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
+      const channelId = subOptions?.find((o: any) => o.name === "채널")?.value as string;
+      const fieldMap: Record<string, SettingsField> = {
+        "스터디홈": "study_home_channel_id",
+        "목표포럼": "goal_forum_channel_id",
+        "인증채널": "checkin_channel_id",
+        "리더보드포럼": "leaderboard_forum_channel_id",
+      };
+      const field = fieldMap[type];
+      if (!field || !channelId) {
+        await sendFollowup(appId, token, "올바른 채널 종류와 값을 선택해 주세요.", {
+          ephemeral: true,
+        });
+        return;
+      }
+      const result = await updateGuildSetting(env.DB, guildId, field, channelId);
       await sendFollowup(appId, token, result.message, { ephemeral: true });
       return;
     }
