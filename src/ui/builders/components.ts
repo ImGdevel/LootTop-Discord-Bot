@@ -16,6 +16,7 @@ export type DiscordComponent =
   | DiscordSeparator
   | DiscordContainer
   | DiscordSection
+  | DiscordActionRow
   | DiscordButton;
 
 export interface DiscordTextDisplay {
@@ -37,7 +38,13 @@ export interface DiscordContainer {
 
 export interface DiscordSection {
   type: 9;
-  components: [DiscordTextDisplay, DiscordButton?] | [DiscordTextDisplay];
+  components: DiscordTextDisplay[];
+  accessory?: DiscordButton;
+}
+
+export interface DiscordActionRow {
+  type: 1;
+  components: DiscordButton[];
 }
 
 export interface DiscordButton {
@@ -75,10 +82,22 @@ export function button(spec: ButtonSpec): DiscordButton {
   };
 }
 
-export function section(markdown: string, accessory?: DiscordButton): DiscordSection {
+export function section(markdown: string, accessory?: DiscordButton): DiscordComponent {
+  if (!accessory) {
+    return textBlock(markdown);
+  }
+
   return {
     type: 9,
-    components: accessory ? [textBlock(markdown), accessory] : [textBlock(markdown)],
+    components: [textBlock(markdown)],
+    accessory,
+  };
+}
+
+export function actionRow(buttons: DiscordButton[]): DiscordActionRow {
+  return {
+    type: 1,
+    components: buttons,
   };
 }
 
