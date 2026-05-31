@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .env.discord
+.husky/_
 
 # Logs
 logs/
