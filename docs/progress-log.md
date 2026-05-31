@@ -20,11 +20,11 @@
 - Worker 배포 완료 및 Discord Interactions Endpoint URL 등록 완료
 - Husky PR #2 리뷰 반영: AI attribution 정규식 오탐 수정
 - Phase 5: `/주간계획`, `btn_plan_write` 버튼, `modal_plan_write` 모달, PlanService
+- Phase 6: `/인증`, `btn_checkin_today` 버튼, `modal_checkin_today` 모달, CheckinService
 
 ## 다음 작업
 
-- Phase 6: `/인증`, CheckinService
-- Phase 7: 리더보드, LeaderboardService
+- Phase 7: `/리더보드`, `/내계획`, `/내인증현황`, LeaderboardService
 - Phase 8: Cron 자동화, ReminderService
 - Phase 9: 안정화
 
