@@ -77,7 +77,7 @@ if (!/[가-힣]/.test(subject)) {
   errors.push("커밋 메시지 제목은 한국어를 포함해야 한다.");
 }
 
-if (/(Generated with|Co-authored-by:|Co-committed-by:|Claude|Codex)/i.test(message)) {
+if (/(Generated (by|with)\s+(Claude|Codex|AI)|Co-authored-by:|Co-committed-by:)/i.test(message)) {
   errors.push("AI attribution 또는 공동 작성 footer를 남기지 않는다.");
 }
 
