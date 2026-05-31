@@ -32,14 +32,47 @@ function isForbidden(file) {
   return false;
 }
 
+function getGitConfig(key) {
+  try {
+    return execFileSync("git", ["config", "--get", key], { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
 const stagedFiles = getStagedFiles();
 const forbiddenFiles = stagedFiles.filter(isForbidden);
+const blockedContributor = "codexdeus-lgtm";
+const currentUserName = getGitConfig("user.name");
+const currentUserEmail = getGitConfig("user.email");
+const recentAuthors = execFileSync(
+  "git",
+  ["log", "--format=%an <%ae>", "-n", "20"],
+  { encoding: "utf8" }
+)
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter(Boolean);
+const contributorMatches = [
+  currentUserName,
+  currentUserEmail,
+  ...recentAuthors,
+].filter((value) => value.includes(blockedContributor));
 
 if (forbiddenFiles.length > 0) {
   console.error("Forbidden files detected in staged changes:");
   for (const file of forbiddenFiles) {
     console.error(`- ${file}`);
   }
+  process.exit(1);
+}
+
+if (contributorMatches.length > 0) {
+  console.error("Blocked contributor detected:");
+  for (const value of contributorMatches) {
+    console.error(`- ${value}`);
+  }
+  console.error("`codexdeus-lgtm` 계정이 기여자 정보에 남아 있으면 커밋할 수 없다.");
   process.exit(1);
 }
 
