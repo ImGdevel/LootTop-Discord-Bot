@@ -12,35 +12,34 @@ import {
   handleCheckinCommand,
   handleCheckinButton,
   handleCheckinModal,
-  handleCheckinModalOpen,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
 import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export function routeInteraction(
+export async function routeInteraction(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   switch (interaction.type) {
     case InteractionType.APPLICATION_COMMAND:
-      return routeCommand(interaction, env, ctx);
+      return await routeCommand(interaction, env, ctx);
     case InteractionType.MESSAGE_COMPONENT:
-      return routeComponent(interaction, env, ctx);
+      return await routeComponent(interaction, env, ctx);
     case InteractionType.MODAL_SUBMIT:
-      return routeModal(interaction, env, ctx);
+      return await routeModal(interaction, env, ctx);
     default:
       return null;
   }
 }
 
-function routeCommand(
+async function routeCommand(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   switch (interaction.data?.name) {
     case COMMANDS.HOME:
       return handleHomeCommand(interaction, env, ctx);
@@ -51,11 +50,11 @@ function routeCommand(
   }
 }
 
-function routeComponent(
+async function routeComponent(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   const customId = interaction.data?.custom_id ?? "";
 
   // 목표 wizard
@@ -77,10 +76,7 @@ function routeComponent(
     return handleGoalCommand(interaction, env, ctx);
   }
   if (customId.startsWith("home:checkin") || customId.startsWith("checkin:submit")) {
-    return handleCheckinButton(interaction, env, ctx);
-  }
-  if (customId.startsWith("checkin:modal:open:")) {
-    return handleCheckinModalOpen(interaction);
+    return await handleCheckinButton(interaction, env);
   }
   if (customId.startsWith("home:leaderboard") || customId.startsWith("leaderboard:view")) {
     return handleLeaderboardCommand(interaction, env, ctx);
@@ -92,11 +88,11 @@ function routeComponent(
   return null;
 }
 
-function routeModal(
+async function routeModal(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   switch (interaction.data?.custom_id) {
     case MODAL_IDS.GOAL_WRITE:
       return handleGoalWriteModal(interaction, env, ctx);

@@ -37,7 +37,7 @@ export default {
       );
     }
 
-    const response = routeInteraction(interaction, env, ctx);
+    const response = await routeInteraction(interaction, env, ctx);
     if (!response) {
       return new Response(
         JSON.stringify({

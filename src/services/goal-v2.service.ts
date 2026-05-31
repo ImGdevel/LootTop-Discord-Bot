@@ -9,7 +9,7 @@ import {
   updateUserDailyGoalMessageId,
 } from "../db/user-daily-goals.repository.js";
 import { upsertUser } from "../db/users.repository.js";
-import { createMessage } from "../discord/rest.js";
+import { createMessage, editMessage } from "../discord/rest.js";
 import { getWeekEndDate, getWeekStartDate, toLocalDateString } from "../domain/date.js";
 import { buildGoalSummaryCard } from "../ui/cards/goal-summary.card.js";
 import { MessageFlags } from "../types.js";
@@ -139,28 +139,49 @@ export async function saveCurrentUserGoalsV2(
 
   // 공개 목표 카드 게시
   if (cycle.forum_thread_id) {
+    const proofTypeLabels = goalItems.map((item) => ({
+      label: item.label,
+      proofTypeLabel: PROOF_TYPE_LABELS[item.proofType] ?? item.proofType,
+    }));
+
+    const card = buildGoalSummaryCard({
+      memberDisplay: displayName,
+      weekLabel: "이번 주 목표",
+      periodLabel: cycle.week_start_date + " ~ " + cycle.week_end_date,
+      goals: proofTypeLabels,
+      restDaysLabel: input.restDays.length > 0 ? input.restDays.join(", ") : "토, 일",
+      editButtonId: "goal:edit:self:current:1",
+    });
+
     try {
-      const proofTypeLabels = goalItems.map((item) => ({
-        label: item.label,
-        proofTypeLabel: PROOF_TYPE_LABELS[item.proofType] ?? item.proofType,
-      }));
-
-      const card = buildGoalSummaryCard({
-        memberDisplay: displayName,
-        weekLabel: "이번 주 목표",
-        periodLabel: cycle.week_start_date + " ~ " + cycle.week_end_date,
-        goals: proofTypeLabels,
-        restDaysLabel: input.restDays.length > 0 ? input.restDays.join(", ") : "토, 일",
-        editButtonId: "goal:edit:self:current:1",
-      });
-
-      const message = await createMessage(cycle.forum_thread_id, botToken, {
-        flags: MessageFlags.IS_COMPONENTS_V2,
-        components: card.components,
-      });
-      await updateUserDailyGoalMessageId(db, userGoal.id, message.id);
+      if (userGoal.goal_message_id) {
+        await editMessage(cycle.forum_thread_id, userGoal.goal_message_id, botToken, {
+          flags: MessageFlags.IS_COMPONENTS_V2,
+          components: card.components,
+        });
+      } else {
+        const message = await createMessage(cycle.forum_thread_id, botToken, {
+          flags: MessageFlags.IS_COMPONENTS_V2,
+          components: card.components,
+        });
+        await updateUserDailyGoalMessageId(db, userGoal.id, message.id);
+      }
     } catch (err) {
       console.error("[goal-v2] 카드 게시 실패:", err);
+
+      if (!userGoal.goal_message_id) {
+        // 새 메시지 생성 흐름에서만 실패 시 무시한다. 수정 실패는 stale message일 수 있다.
+      } else {
+        try {
+          const message = await createMessage(cycle.forum_thread_id, botToken, {
+            flags: MessageFlags.IS_COMPONENTS_V2,
+            components: card.components,
+          });
+          await updateUserDailyGoalMessageId(db, userGoal.id, message.id);
+        } catch (fallbackErr) {
+          console.error("[goal-v2] 카드 재생성 실패:", fallbackErr);
+        }
+      }
     }
   }
 

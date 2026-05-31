@@ -62,6 +62,22 @@ export async function createMessage(
   });
 }
 
+export async function editMessage(
+  channelId: string,
+  messageId: string,
+  botToken: string,
+  body: Record<string, unknown>
+): Promise<DiscordMessage> {
+  return discordBotRequest<DiscordMessage>(
+    botToken,
+    "/channels/" + channelId + "/messages/" + messageId,
+    {
+      method: "PATCH",
+      body,
+    }
+  );
+}
+
 export async function createForumThread(
   forumChannelId: string,
   botToken: string,

@@ -51,7 +51,14 @@ export async function getGoalWizardSession(
     .prepare("SELECT * FROM goal_wizard_sessions WHERE id = ?")
     .bind(id)
     .first<GoalWizardSessionRow>();
-  return result ?? null;
+
+  if (!result) return null;
+  if (result.expires_at <= new Date().toISOString()) {
+    await deleteGoalWizardSession(db, id);
+    return null;
+  }
+
+  return result;
 }
 
 export async function updateGoalWizardSessionProofType(

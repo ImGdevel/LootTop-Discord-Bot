@@ -167,7 +167,9 @@ async function handleGoalProofTypeSelectAsync(
   await updateGoalWizardSessionProofType(env.DB, sessionId, goalIndex, proofType);
 
   const session = await getGoalWizardSession(env.DB, sessionId);
-  if (!session) return;
+  if (!session || session.guild_id !== interaction.guild_id) return;
+  const user = interaction.member?.user ?? interaction.user;
+  if (!user || session.discord_user_id !== user.id) return;
 
   const goalLabels = JSON.parse(session.goal_labels_json) as string[];
   await updateFollowup(
@@ -200,7 +202,9 @@ async function handleGoalRestDaysSelectAsync(
   await updateGoalWizardSessionRestDays(env.DB, sessionId, restDays);
 
   const session = await getGoalWizardSession(env.DB, sessionId);
-  if (!session) return;
+  if (!session || session.guild_id !== interaction.guild_id) return;
+  const user = interaction.member?.user ?? interaction.user;
+  if (!user || session.discord_user_id !== user.id) return;
 
   const goalLabels = JSON.parse(session.goal_labels_json) as string[];
   await updateFollowup(
@@ -236,6 +240,15 @@ async function handleGoalSaveAsync(
   if (!session) {
     await updateFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
       "세션이 만료되었습니다. 처음부터 다시 시도해 주세요.", {});
+    return;
+  }
+  if (session.guild_id !== guildId || session.discord_user_id !== user.id) {
+    await updateFollowup(
+      env.DISCORD_APPLICATION_ID,
+      interaction.token,
+      "이 목표 작성 세션에 접근할 수 없습니다.",
+      {}
+    );
     return;
   }
 

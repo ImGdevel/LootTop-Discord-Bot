@@ -28,48 +28,18 @@ async function handleCheckinCommandAsync(
   });
 }
 
-export function handleCheckinButton(
-  interaction: DiscordInteraction,
-  env: Env,
-  ctx: ExecutionContext
-): Response {
-  ctx.waitUntil(openCheckinModalAsync(interaction, env));
-  return deferredEphemeralResponse();
-}
-
-async function openCheckinModalAsync(
+export async function handleCheckinButton(
   interaction: DiscordInteraction,
   env: Env
-): Promise<void> {
+): Promise<Response> {
   const guildId = interaction.guild_id;
   const user = interaction.member?.user ?? interaction.user;
-  if (!guildId || !user) return;
+  if (!guildId || !user) {
+    return deferredEphemeralResponse();
+  }
 
   const context = await getTodayCheckinContext(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
-  const labels = context?.goalItemLabels ?? ["항목 1", "항목 2", "항목 3"];
-  // 모달을 직접 열 수 없으므로 followup으로 버튼 표시 후 사용자가 다시 클릭
-  // (Deferred 상태에서 모달은 불가 — 즉시 모달 반환 방식으로 대체)
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
-    "아래 버튼을 눌러 인증을 제출하세요.", {
-      ephemeral: true,
-      components: [{
-        type: 1,
-        components: [{
-          type: 2,
-          style: 1,
-          label: "인증 폼 열기",
-          custom_id: "checkin:modal:open:" + labels.slice(0, 3).join("|"),
-        }],
-      }],
-    });
-}
-
-export function handleCheckinModalOpen(
-  interaction: DiscordInteraction
-): Response {
-  const customId = interaction.data?.custom_id ?? "";
-  const labelsRaw = customId.replace("checkin:modal:open:", "");
-  const labels = labelsRaw.split("|").filter(Boolean);
+  const labels = context?.goalItemLabels?.slice(0, 3) ?? ["항목 1", "항목 2", "항목 3"];
   return modalResponse(MODAL_IDS.CHECKIN_TODAY, "오늘 인증", [
     {
       label: labels[0] ?? "항목 1",
