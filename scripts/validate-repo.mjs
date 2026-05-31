@@ -40,11 +40,21 @@ function getGitConfig(key) {
   }
 }
 
+function getGitVar(key) {
+  try {
+    return execFileSync("git", ["var", key], { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
 const stagedFiles = getStagedFiles();
 const forbiddenFiles = stagedFiles.filter(isForbidden);
-const blockedContributor = "codexdeus-lgtm";
+const blockedContributorPatterns = ["codexdeus-lgtm", "codexdeus@gmail.com"];
 const currentUserName = getGitConfig("user.name");
 const currentUserEmail = getGitConfig("user.email");
+const effectiveAuthor = getGitVar("GIT_AUTHOR_IDENT");
+const effectiveCommitter = getGitVar("GIT_COMMITTER_IDENT");
 const recentAuthors = execFileSync(
   "git",
   ["log", "--format=%an <%ae>", "-n", "20"],
@@ -56,8 +66,10 @@ const recentAuthors = execFileSync(
 const contributorMatches = [
   currentUserName,
   currentUserEmail,
+  effectiveAuthor,
+  effectiveCommitter,
   ...recentAuthors,
-].filter((value) => value.includes(blockedContributor));
+].filter((value) => blockedContributorPatterns.some((pattern) => value.includes(pattern)));
 
 if (forbiddenFiles.length > 0) {
   console.error("Forbidden files detected in staged changes:");
@@ -72,7 +84,7 @@ if (contributorMatches.length > 0) {
   for (const value of contributorMatches) {
     console.error(`- ${value}`);
   }
-  console.error("`codexdeus-lgtm` 계정이 기여자 정보에 남아 있으면 커밋할 수 없다.");
+  console.error("`codexdeus-lgtm` 계정 또는 `codexdeus@gmail.com` 식별자가 기여자 정보에 남아 있으면 커밋할 수 없다.");
   process.exit(1);
 }
 
