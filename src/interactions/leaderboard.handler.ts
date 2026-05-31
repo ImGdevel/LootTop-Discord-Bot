@@ -1,4 +1,5 @@
 import { deferredEphemeralResponse, deferredResponse, sendFollowup } from "../discord/response.js";
+import { buildLeaderboardFlow } from "../flows/leaderboard.flow.js";
 import { buildLeaderboard, formatLeaderboard } from "../services/leaderboard.service.js";
 import { fetchCurrentWeekPlan } from "../services/plan.service.js";
 import { fetchMyCheckinStatus } from "../services/checkin.service.js";
@@ -19,10 +20,11 @@ async function handleLeaderboardAsync(
 ): Promise<void> {
   const guildId = interaction.guild_id;
   if (!guildId) return;
-
-  const result = await buildLeaderboard(env.DB, guildId);
-  const message = formatLeaderboard(result);
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, message);
+  const payload = await buildLeaderboardFlow(env.DB, guildId);
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+    flags: payload.flags,
+    components: payload.components,
+  });
 }
 
 export function handleMyPlanCommand(

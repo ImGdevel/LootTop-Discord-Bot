@@ -4,6 +4,7 @@ import {
   modalResponse,
   sendFollowup,
 } from "../discord/response.js";
+import { buildCurrentWeeklyGoalFlow } from "../flows/goal.flow.js";
 import { fetchCurrentWeekPlan, savePlan } from "../services/plan.service.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -29,38 +30,11 @@ async function handleWeeklyPlanAsync(
   const user = interaction.member?.user ?? interaction.user;
 
   if (!guildId || !user) return;
-
-  const plan = await fetchCurrentWeekPlan(env.DB, guildId, user.id);
-
-  const planWriteButton = {
-    type: 1,
-    components: [
-      {
-        type: 2,
-        style: 1,
-        label: plan ? "계획 수정" : "계획 작성",
-        custom_id: BUTTON_IDS.PLAN_WRITE,
-      },
-    ],
-  };
-
-  if (plan) {
-    const content =
-      `**이번 주 계획** (${plan.week_start_date} ~ ${plan.week_end_date})\n\n` +
-      `**목표**: ${plan.goal_text}\n` +
-      `**목표 인증 횟수**: ${plan.target_count}회`;
-    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, content, {
-      ephemeral: true,
-      components: [planWriteButton],
-    });
-  } else {
-    await sendFollowup(
-      env.DISCORD_APPLICATION_ID,
-      interaction.token,
-      "이번 주 계획이 없습니다. 아래 버튼을 눌러 계획을 작성해 주세요.",
-      { ephemeral: true, components: [planWriteButton] }
-    );
-  }
+  const payload = await buildCurrentWeeklyGoalFlow(env.DB, guildId, user.id);
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, payload.content, {
+    flags: payload.flags,
+    components: payload.components,
+  });
 }
 
 /**

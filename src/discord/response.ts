@@ -51,11 +51,14 @@ export function pongResponse(): Response {
 export async function sendFollowup(
   applicationId: string,
   interactionToken: string,
-  content: string,
-  options: { ephemeral?: boolean; embeds?: unknown[]; components?: unknown[] } = {}
+  content?: string,
+  options: { ephemeral?: boolean; embeds?: unknown[]; components?: unknown[]; flags?: number } = {}
 ): Promise<void> {
-  const body: Record<string, unknown> = { content };
-  if (options.ephemeral) body.flags = MessageFlags.EPHEMERAL;
+  const body: Record<string, unknown> = {};
+  if (content != null) body.content = content;
+  let flags = options.flags ?? 0;
+  if (options.ephemeral) flags |= MessageFlags.EPHEMERAL;
+  if (flags !== 0) body.flags = flags;
   if (options.embeds) body.embeds = options.embeds;
   if (options.components) body.components = options.components;
 
@@ -77,11 +80,14 @@ export async function sendFollowup(
 export async function sendChannelMessage(
   channelId: string,
   botToken: string,
-  content: string,
-  components?: unknown[]
+  content?: string,
+  components?: unknown[],
+  flags?: number
 ): Promise<void> {
-  const body: Record<string, unknown> = { content };
+  const body: Record<string, unknown> = {};
+  if (content != null) body.content = content;
   if (components) body.components = components;
+  if (flags != null) body.flags = flags;
 
   const res = await fetch("https://discord.com/api/v10/channels/" + channelId + "/messages", {
     method: "POST",
