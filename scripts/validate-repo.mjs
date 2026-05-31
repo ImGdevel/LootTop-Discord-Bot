@@ -76,17 +76,11 @@ if (!currentUserEmail) {
   identityErrors.push("git user.email이 설정되어 있어야 한다.");
 }
 
-if (
-  parsedAuthor.name !== currentUserName ||
-  parsedAuthor.email !== currentUserEmail
-) {
+if (parsedAuthor.name !== currentUserName || parsedAuthor.email !== currentUserEmail) {
   identityErrors.push("GIT_AUTHOR_IDENT는 현재 git user.name / user.email과 같아야 한다.");
 }
 
-if (
-  parsedCommitter.name !== currentUserName ||
-  parsedCommitter.email !== currentUserEmail
-) {
+if (parsedCommitter.name !== currentUserName || parsedCommitter.email !== currentUserEmail) {
   identityErrors.push("GIT_COMMITTER_IDENT는 현재 git user.name / user.email과 같아야 한다.");
 }
 

@@ -80,8 +80,7 @@ npm run register
 
 현재 설정:
 
-- `pre-commit`에서 `npm run validate:repo` 실행
-- `pre-commit`에서 `npm run type-check` 실행
+- `pre-commit`에서 `npm run validate:repo && npm run type-check` 실행
 - `commit-msg`에서 커밋 메시지 형식 검증 실행
 
 즉, 금지 파일이 staged 되었거나 타입 오류가 있거나 커밋 author/committer가 현재 git identity와 다르거나 커밋 메시지 형식이 어긋나면 커밋이 차단된다.
@@ -117,10 +116,6 @@ npm run prepare
 예외:
 
 - `.env.example`
-
-추가로 다음 작성자/기여자 정보가 감지되면 커밋을 차단한다.
-
-- `codexdeus-lgtm`
 
 ### 커밋 메시지 검증 정책
 

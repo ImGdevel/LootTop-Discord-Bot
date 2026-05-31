@@ -66,7 +66,7 @@ if (subjectMatch) {
     errors.push(`${type} 타입의 gitmoji는 ${expectedGitmoji} 이어야 한다.`);
   }
 
-  if (/(한다|했다|된다|되다|합니다|했습니다|하였다)$/.test(description.trim())) {
+  if (/(한다|했다|된다|되다|합니다|했습니다|하였다)[.!?…]*$/.test(description.trim())) {
     errors.push(
       "제목 요약은 서술형이 아니라 한국어 명사형이어야 한다. 예: 🔧 chore(repo): 허스키 검증 규칙 추가"
     );
