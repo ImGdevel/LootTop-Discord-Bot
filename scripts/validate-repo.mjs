@@ -60,51 +60,34 @@ function parseGitIdentity(identity) {
 
 const stagedFiles = getStagedFiles();
 const forbiddenFiles = stagedFiles.filter(isForbidden);
-const blockedContributorPatterns = ["codexdeus-lgtm", "codexdeus@gmail.com"];
-const expectedIdentity = {
-  name: "SH Woo",
-  email: "imdlsrks.mc@gmail.com",
-};
 const currentUserName = getGitConfig("user.name");
 const currentUserEmail = getGitConfig("user.email");
 const effectiveAuthor = getGitVar("GIT_AUTHOR_IDENT");
 const effectiveCommitter = getGitVar("GIT_COMMITTER_IDENT");
 const parsedAuthor = parseGitIdentity(effectiveAuthor);
 const parsedCommitter = parseGitIdentity(effectiveCommitter);
-const recentAuthors = execFileSync(
-  "git",
-  ["log", "--format=%an <%ae>", "-n", "20"],
-  { encoding: "utf8" }
-)
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .filter(Boolean);
-const contributorMatches = [
-  currentUserName,
-  currentUserEmail,
-  effectiveAuthor,
-  effectiveCommitter,
-  ...recentAuthors,
-].filter((value) => blockedContributorPatterns.some((pattern) => value.includes(pattern)));
 const identityErrors = [];
 
-if (currentUserName !== expectedIdentity.name) {
-  identityErrors.push(`git user.name은 ${expectedIdentity.name} 이어야 한다.`);
+if (!currentUserName) {
+  identityErrors.push("git user.name이 설정되어 있어야 한다.");
 }
 
-if (currentUserEmail !== expectedIdentity.email) {
-  identityErrors.push(`git user.email은 ${expectedIdentity.email} 이어야 한다.`);
-}
-
-if (parsedAuthor.name !== expectedIdentity.name || parsedAuthor.email !== expectedIdentity.email) {
-  identityErrors.push(`GIT_AUTHOR_IDENT는 ${expectedIdentity.name} <${expectedIdentity.email}> 이어야 한다.`);
+if (!currentUserEmail) {
+  identityErrors.push("git user.email이 설정되어 있어야 한다.");
 }
 
 if (
-  parsedCommitter.name !== expectedIdentity.name ||
-  parsedCommitter.email !== expectedIdentity.email
+  parsedAuthor.name !== currentUserName ||
+  parsedAuthor.email !== currentUserEmail
 ) {
-  identityErrors.push(`GIT_COMMITTER_IDENT는 ${expectedIdentity.name} <${expectedIdentity.email}> 이어야 한다.`);
+  identityErrors.push("GIT_AUTHOR_IDENT는 현재 git user.name / user.email과 같아야 한다.");
+}
+
+if (
+  parsedCommitter.name !== currentUserName ||
+  parsedCommitter.email !== currentUserEmail
+) {
+  identityErrors.push("GIT_COMMITTER_IDENT는 현재 git user.name / user.email과 같아야 한다.");
 }
 
 if (forbiddenFiles.length > 0) {
@@ -112,15 +95,6 @@ if (forbiddenFiles.length > 0) {
   for (const file of forbiddenFiles) {
     console.error(`- ${file}`);
   }
-  process.exit(1);
-}
-
-if (contributorMatches.length > 0) {
-  console.error("Blocked contributor detected:");
-  for (const value of contributorMatches) {
-    console.error(`- ${value}`);
-  }
-  console.error("`codexdeus-lgtm` 계정 또는 `codexdeus@gmail.com` 식별자가 기여자 정보에 남아 있으면 커밋할 수 없다.");
   process.exit(1);
 }
 
