@@ -26,6 +26,7 @@ export const InteractionResponseType = {
 
 export const MessageFlags = {
   EPHEMERAL: 64,
+  IS_COMPONENTS_V2: 32768,
 } as const;
 
 // Discord Interaction 페이로드 타입
@@ -75,5 +76,7 @@ export interface InteractionResponse {
     flags?: number;
     components?: unknown[];
     embeds?: unknown[];
+    custom_id?: string;
+    title?: string;
   };
 }
