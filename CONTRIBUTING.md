@@ -46,6 +46,7 @@
 - 문장을 `~한다` 형태로 끝내지 않음
 - 하나의 커밋에는 하나의 의도만 담음
 - 본문은 권장하지만 hook에서 강제하지 않음
+- 커밋 author와 committer는 현재 로컬 git identity와 일치해야 함
 
 ## 로컬 개발
 
@@ -79,11 +80,10 @@ npm run register
 
 현재 설정:
 
-- `pre-commit`에서 `npm run validate:repo` 실행
-- `pre-commit`에서 `npm run type-check` 실행
+- `pre-commit`에서 `npm run validate:repo && npm run type-check` 실행
 - `commit-msg`에서 커밋 메시지 형식 검증 실행
 
-즉, 금지 파일이 staged 되었거나 타입 오류가 있거나 커밋 메시지 형식이 어긋나면 커밋이 차단된다.
+즉, 금지 파일이 staged 되었거나 타입 오류가 있거나 커밋 author/committer가 현재 git identity와 다르거나 커밋 메시지 형식이 어긋나면 커밋이 차단된다.
 
 ### Husky 설치/복구
 

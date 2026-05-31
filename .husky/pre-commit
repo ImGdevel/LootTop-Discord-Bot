@@ -1,2 +1,1 @@
-npm run validate:repo
-npm run type-check
+npm run validate:repo && npm run type-check
