@@ -4,17 +4,16 @@ import {
   handleMyCheckinStatus,
   handleMyPlan,
   handleSettings,
-  handleWeeklyPlan,
 } from "../commands/handlers.js";
+import {
+  handleWeeklyPlanCommand,
+  handlePlanWriteButton,
+  handlePlanWriteModal,
+} from "./plan.handler.js";
 import { BUTTON_IDS, COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-/**
- * Interaction 라우터
- *
- * Interaction 타입과 커맨드명/custom_id를 기반으로 적절한 핸들러로 분기한다.
- */
 export function routeInteraction(
   interaction: DiscordInteraction,
   env: Env,
@@ -23,13 +22,10 @@ export function routeInteraction(
   switch (interaction.type) {
     case InteractionType.APPLICATION_COMMAND:
       return routeCommand(interaction, env, ctx);
-
     case InteractionType.MESSAGE_COMPONENT:
       return routeButton(interaction, env, ctx);
-
     case InteractionType.MODAL_SUBMIT:
       return routeModal(interaction, env, ctx);
-
     default:
       return null;
   }
@@ -42,7 +38,7 @@ function routeCommand(
 ): Response | null {
   switch (interaction.data?.name) {
     case COMMANDS.WEEKLY_PLAN:
-      return handleWeeklyPlan(interaction, env, ctx);
+      return handleWeeklyPlanCommand(interaction, env, ctx);
     case COMMANDS.CHECKIN:
       return handleCheckin(interaction, env, ctx);
     case COMMANDS.LEADERBOARD:
@@ -59,19 +55,18 @@ function routeCommand(
 }
 
 function routeButton(
-  _interaction: DiscordInteraction,
-  _env: Env,
-  _ctx: ExecutionContext
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
 ): Response | null {
-  switch (_interaction.data?.custom_id) {
+  switch (interaction.data?.custom_id) {
     case BUTTON_IDS.PLAN_WRITE:
-      // TODO Phase 5: 계획 작성 모달 응답
-      return null;
+      return handlePlanWriteButton(interaction);
     case BUTTON_IDS.CHECKIN_TODAY:
-      // TODO Phase 6: 인증 모달 응답
+      // TODO Phase 6
       return null;
     case BUTTON_IDS.LEADERBOARD_VIEW:
-      // TODO Phase 7: 리더보드 보기
+      // TODO Phase 7
       return null;
     default:
       return null;
@@ -79,16 +74,15 @@ function routeButton(
 }
 
 function routeModal(
-  _interaction: DiscordInteraction,
-  _env: Env,
-  _ctx: ExecutionContext
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
 ): Response | null {
-  switch (_interaction.data?.custom_id) {
+  switch (interaction.data?.custom_id) {
     case MODAL_IDS.PLAN_WRITE:
-      // TODO Phase 5: 계획 저장
-      return null;
+      return handlePlanWriteModal(interaction, env, ctx);
     case MODAL_IDS.CHECKIN_TODAY:
-      // TODO Phase 6: 인증 저장
+      // TODO Phase 6
       return null;
     default:
       return null;

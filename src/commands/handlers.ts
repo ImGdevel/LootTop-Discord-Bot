@@ -2,15 +2,6 @@ import { deferredEphemeralResponse, deferredResponse } from "../discord/response
 import { handleSettings } from "./settings.handler.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export function handleWeeklyPlan(
-  _interaction: DiscordInteraction,
-  _env: Env,
-  _ctx: ExecutionContext
-): Response {
-  // TODO Phase 5
-  return deferredEphemeralResponse();
-}
-
 export function handleCheckin(
   _interaction: DiscordInteraction,
   _env: Env,
