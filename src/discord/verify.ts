@@ -1,9 +1,3 @@
-/**
- * Discord Interaction 요청 서명 검증
- *
- * Discord는 모든 Interaction 요청에 Ed25519 서명을 포함한다.
- * 검증 실패 시 401을 반환해야 한다.
- */
 export async function verifyDiscordRequest(
   request: Request,
   publicKey: string
@@ -16,9 +10,7 @@ export async function verifyDiscordRequest(
   }
 
   const body = await request.text();
-
   const isValid = await verifySignature(publicKey, signature, timestamp, body);
-
   return { valid: isValid, body };
 }
 
@@ -36,12 +28,17 @@ async function verifySignature(
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
       publicKeyBytes,
-      { name: "Ed25519" },
-      false,
+      { name: "Ed25519", namedCurve: "Ed25519" },
+      true,
       ["verify"]
     );
 
-    return await crypto.subtle.verify("Ed25519", cryptoKey, signatureBytes, message);
+    return await crypto.subtle.verify(
+      { name: "Ed25519" },
+      cryptoKey,
+      signatureBytes,
+      message
+    );
   } catch {
     return false;
   }
