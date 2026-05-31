@@ -46,6 +46,7 @@
 - 문장을 `~한다` 형태로 끝내지 않음
 - 하나의 커밋에는 하나의 의도만 담음
 - 본문은 권장하지만 hook에서 강제하지 않음
+- 이 저장소의 커밋 identity는 `SH Woo <imdlsrks.mc@gmail.com>`로 고정
 - `codexdeus-lgtm` 계정 또는 `codexdeus@gmail.com` 식별자가 기여자 정보에 남아 있으면 커밋이 차단됨
 
 ## 로컬 개발
