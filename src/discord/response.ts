@@ -3,7 +3,7 @@ import { InteractionResponseType, MessageFlags, type InteractionResponse } from 
 /**
  * Discord Interaction 응답 생성 유틸
  *
- * 모든 Interaction은 Deferred Response → Followup 패턴을 기본으로 사용한다.
+ * 모든 Interaction은 Deferred Response -> Followup 패턴을 기본으로 사용한다.
  * (Discord 3초 응답 제한 대응)
  */
 
@@ -27,11 +27,11 @@ export function pongResponse(): Response {
   return jsonResponse({ type: InteractionResponseType.PONG });
 }
 
-// Followup 메시지 전송 (Deferred 이후 실제 결과 전송)
+// Interaction Webhook followup은 인증 헤더 불필요
+// (Discord Interaction Webhook은 interactionToken 자체가 인증 수단)
 export async function sendFollowup(
   applicationId: string,
   interactionToken: string,
-  botToken: string,
   content: string,
   options: { ephemeral?: boolean; embeds?: unknown[] } = {}
 ): Promise<void> {
@@ -50,7 +50,6 @@ export async function sendFollowup(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bot ${botToken}`,
       },
       body: JSON.stringify(body),
     }

@@ -36,12 +36,12 @@ async function verifySignature(
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
       publicKeyBytes,
-      { name: "NODE-ED25519", namedCurve: "NODE-ED25519" },
+      { name: "Ed25519" },
       false,
       ["verify"]
     );
 
-    return await crypto.subtle.verify("NODE-ED25519", cryptoKey, signatureBytes, message);
+    return await crypto.subtle.verify("Ed25519", cryptoKey, signatureBytes, message);
   } catch {
     return false;
   }

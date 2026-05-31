@@ -1,7 +1,7 @@
 import { verifyDiscordRequest } from "./discord/verify.js";
 import { pongResponse } from "./discord/response.js";
 import { routeInteraction } from "./interactions/router.js";
-import { InteractionType } from "./types.js";
+import { InteractionType, InteractionResponseType, MessageFlags } from "./types.js";
 import type { Env, DiscordInteraction } from "./types.js";
 
 export default {
@@ -26,7 +26,7 @@ export default {
       return new Response("Bad Request", { status: 400 });
     }
 
-    // PING → PONG (Discord 엔드포인트 검증용)
+    // PING -> PONG (Discord 엔드포인트 검증용)
     if (interaction.type === InteractionType.PING) {
       return pongResponse();
     }
@@ -35,8 +35,8 @@ export default {
     if (!interaction.guild_id) {
       return new Response(
         JSON.stringify({
-          type: 4,
-          data: { content: "이 봇은 서버 내에서만 사용할 수 있습니다.", flags: 64 },
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: "이 봇은 서버 내에서만 사용할 수 있습니다.", flags: MessageFlags.EPHEMERAL },
         }),
         { headers: { "Content-Type": "application/json" } }
       );
@@ -47,8 +47,8 @@ export default {
     if (!response) {
       return new Response(
         JSON.stringify({
-          type: 4,
-          data: { content: "알 수 없는 명령어입니다.", flags: 64 },
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: "알 수 없는 명령어입니다.", flags: MessageFlags.EPHEMERAL },
         }),
         { headers: { "Content-Type": "application/json" } }
       );
