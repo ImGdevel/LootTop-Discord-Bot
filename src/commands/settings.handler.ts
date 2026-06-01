@@ -62,6 +62,8 @@ export async function processSettingsOptions(
       "목표포럼": "goal_forum_channel_id",
       "인증채널": "checkin_channel_id",
       "리더보드포럼": "leaderboard_forum_channel_id",
+      "알림채널": "notification_channel_id",
+      "휴가채널": "vacation_channel_id",
     };
     const field = fieldMap[type];
     if (!field || !channelId) {

@@ -15,6 +15,10 @@ export interface GuildSettingsRow {
   checkin_thread_close_time: string;
   checkin_webhook_id: string | null;
   checkin_webhook_token: string | null;
+  notification_channel_id: string | null;
+  vacation_channel_id: string | null;
+  vacation_webhook_id: string | null;
+  vacation_webhook_token: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,5 +150,15 @@ export interface GoalWizardSessionRow {
   proof_types_json: string;
   rest_days_json: string;
   expires_at: string;
+  created_at: string;
+}
+
+export interface VacationEntryRow {
+  id: number;
+  guild_id: string;
+  discord_user_id: string;
+  vacation_date: string;  // YYYY-MM-DD
+  reason: string | null;
+  message_id: string | null;
   created_at: string;
 }

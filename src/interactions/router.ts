@@ -1,4 +1,5 @@
 import { handleAdmin } from "../commands/handlers.js";
+import { handleVacationCommand, handleVacationModal, VACATION_MODAL_CUSTOM_ID } from "./vacation.handler.js";
 import { handleGoalCommand } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
 import {
@@ -40,6 +41,8 @@ function routeCommand(
       return handleAdmin(interaction, env, ctx);
     case COMMANDS.CHECKIN:
       return handleCheckinCommand(interaction, env, ctx);
+    case COMMANDS.VACATION:
+      return handleVacationCommand(interaction);
     default:
       return null;
   }
@@ -75,6 +78,9 @@ function routeModal(
 ): Response | null {
   if (interaction.data?.custom_id === MODAL_IDS.CHECKIN) {
     return handleCheckinModal(interaction, env, ctx);
+  }
+  if (interaction.data?.custom_id === VACATION_MODAL_CUSTOM_ID) {
+    return handleVacationModal(interaction, env, ctx);
   }
   return null;
 }

@@ -27,8 +27,10 @@ export async function upsertGuildSettings(
            leaderboard_channel_id, plan_reminder_time, checkin_reminder_time,
            leaderboard_publish_time, study_home_channel_id, goal_forum_channel_id,
            leaderboard_forum_channel_id, goal_publish_time, checkin_thread_open_time,
-           checkin_thread_close_time, checkin_webhook_id, checkin_webhook_token, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           checkin_thread_close_time, checkin_webhook_id, checkin_webhook_token,
+           notification_channel_id, vacation_channel_id, vacation_webhook_id, vacation_webhook_token,
+           created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         guildId,
@@ -47,6 +49,10 @@ export async function upsertGuildSettings(
         fields.checkin_thread_close_time ?? "04:00",
         fields.checkin_webhook_id ?? null,
         fields.checkin_webhook_token ?? null,
+        fields.notification_channel_id ?? null,
+        fields.vacation_channel_id ?? null,
+        fields.vacation_webhook_id ?? null,
+        fields.vacation_webhook_token ?? null,
         now,
         now
       )
@@ -64,6 +70,8 @@ export async function upsertGuildSettings(
           leaderboard_forum_channel_id = ?,
           goal_publish_time = ?, checkin_thread_open_time = ?, checkin_thread_close_time = ?,
           checkin_webhook_id = ?, checkin_webhook_token = ?,
+          notification_channel_id = ?, vacation_channel_id = ?,
+          vacation_webhook_id = ?, vacation_webhook_token = ?,
           updated_at = ?
         WHERE guild_id = ?
       `)
@@ -83,6 +91,10 @@ export async function upsertGuildSettings(
         merged.checkin_thread_close_time,
         merged.checkin_webhook_id ?? null,
         merged.checkin_webhook_token ?? null,
+        merged.notification_channel_id ?? null,
+        merged.vacation_channel_id ?? null,
+        merged.vacation_webhook_id ?? null,
+        merged.vacation_webhook_token ?? null,
         now,
         guildId
       )

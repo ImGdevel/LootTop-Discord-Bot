@@ -39,11 +39,13 @@ export async function ensureV2GuildSetup(
   if (!settings) throw new Error("ensureV2GuildSetup: guild_settings 생성 실패");
 
   // 삭제된 채널 감지 → DB null 처리
-  const [homeId, goalId, checkinId, leaderboardId] = await Promise.all([
+  const [homeId, goalId, checkinId, leaderboardId, notificationId, vacationId] = await Promise.all([
     resolveChannelId(settings.study_home_channel_id, botToken),
     resolveChannelId(settings.goal_forum_channel_id, botToken),
     resolveChannelId(settings.checkin_channel_id, botToken),
     resolveChannelId(settings.leaderboard_forum_channel_id, botToken),
+    resolveChannelId(settings.notification_channel_id, botToken),
+    resolveChannelId(settings.vacation_channel_id, botToken),
   ]);
 
   const nullUpdates: Partial<Omit<GuildSettingsRow, "guild_id" | "created_at" | "updated_at">> = {};
@@ -56,6 +58,12 @@ export async function ensureV2GuildSetup(
     nullUpdates.checkin_webhook_token = null as any;
   }
   if (leaderboardId !== settings.leaderboard_forum_channel_id) nullUpdates.leaderboard_forum_channel_id = null as any;
+  if (notificationId !== settings.notification_channel_id) nullUpdates.notification_channel_id = null as any;
+  if (vacationId !== settings.vacation_channel_id) {
+    nullUpdates.vacation_channel_id = null as any;
+    nullUpdates.vacation_webhook_id = null as any;
+    nullUpdates.vacation_webhook_token = null as any;
+  }
 
   if (Object.keys(nullUpdates).length > 0) {
     await upsertGuildSettings(db, guildId, nullUpdates);
@@ -121,6 +129,42 @@ export async function ensureV2GuildSetup(
     updates.leaderboard_forum_channel_id = ch.id;
     updates.leaderboard_channel_id = ch.id;
     createdChannels.push("#" + ch.name);
+  }
+
+  if (!settings.notification_channel_id) {
+    const ch = await createGuildChannel(guildId, botToken, {
+      name: "알림",
+      type: CHANNEL_TYPES.GUILD_TEXT,
+      topic: "인증 리마인드 알림",
+    });
+    updates.notification_channel_id = ch.id;
+    createdChannels.push("#" + ch.name);
+  }
+
+  if (!settings.vacation_channel_id) {
+    const ch = await createGuildChannel(guildId, botToken, {
+      name: "휴가",
+      type: CHANNEL_TYPES.GUILD_TEXT,
+      topic: "휴가 신청",
+    });
+    updates.vacation_channel_id = ch.id;
+    createdChannels.push("#" + ch.name);
+
+    try {
+      const wh = await createWebhook(ch.id, botToken, "휴가 카드");
+      updates.vacation_webhook_id = wh.id;
+      updates.vacation_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 휴가 webhook 생성 실패:", err);
+    }
+  } else if (!settings.vacation_webhook_id || !settings.vacation_webhook_token) {
+    try {
+      const wh = await createWebhook(settings.vacation_channel_id, botToken, "휴가 카드");
+      updates.vacation_webhook_id = wh.id;
+      updates.vacation_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 휴가 webhook backfill 실패:", err);
+    }
   }
 
   if (Object.keys(updates).length > 0) {

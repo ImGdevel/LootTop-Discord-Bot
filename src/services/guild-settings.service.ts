@@ -15,6 +15,8 @@ export type SettingsField =
   | "study_home_channel_id"
   | "goal_forum_channel_id"
   | "leaderboard_forum_channel_id"
+  | "notification_channel_id"
+  | "vacation_channel_id"
   | "goal_publish_time"
   | "checkin_thread_open_time"
   | "checkin_thread_close_time";
@@ -68,6 +70,8 @@ export async function updateGuildSetting(
     study_home_channel_id: "스터디 홈 채널",
     goal_forum_channel_id: "목표 포럼 채널",
     leaderboard_forum_channel_id: "리더보드 포럼 채널",
+    notification_channel_id: "알림 채널",
+    vacation_channel_id: "휴가 채널",
     goal_publish_time: "목표 생성 시간",
     checkin_thread_open_time: "인증 시작 시간",
     checkin_thread_close_time: "인증 마감 시간",

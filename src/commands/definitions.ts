@@ -8,6 +8,10 @@ export const COMMAND_DEFINITIONS = [
     description: "오늘 인증을 제출합니다.",
   },
   {
+    name: "휴가",
+    description: "휴가를 신청합니다.",
+  },
+  {
     name: "관리자",
     description: "관리자 전용 기능입니다.",
     default_member_permissions: "32",
@@ -52,6 +56,8 @@ export const COMMAND_DEFINITIONS = [
                   { name: "목표 포럼", value: "목표포럼" },
                   { name: "인증 채널", value: "인증채널" },
                   { name: "리더보드 포럼", value: "리더보드포럼" },
+              { name: "알림 채널", value: "알림채널" },
+              { name: "휴가 채널", value: "휴가채널" },
                 ],
               },
               { type: 7, name: "채널", description: "매핑할 채널", required: true },
@@ -95,10 +101,12 @@ export const COMMANDS = {
   HOME: "홈",
   CHECKIN: "인증",
   ADMIN: "관리자",
+  VACATION: "휴가",
 } as const;
 
 export const MODAL_IDS = {
   CHECKIN: "modal_checkin_simple",
+  VACATION: "modal_vacation",
 } as const;
 
 export const MODAL_FIELDS = {
