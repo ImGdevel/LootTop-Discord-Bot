@@ -8,14 +8,14 @@ export function getWeekStartDate(localDateStr: string): string {
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(date);
   monday.setDate(date.getDate() + diff);
-  return monday.toISOString().slice(0, 10);
+  return formatDateParts(monday);
 }
 
 export function getWeekEndDate(weekStartDate: string): string {
   const monday = new Date(weekStartDate + "T00:00:00");
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  return sunday.toISOString().slice(0, 10);
+  return formatDateParts(sunday);
 }
 
 // "2026-06-01" -> "6월 1주차"
@@ -37,4 +37,11 @@ export function isScheduledTime(
     (localNow.getHours() - (targetHour ?? 0)) * 60 +
     (localNow.getMinutes() - (targetMinute ?? 0));
   return Math.abs(diffMinutes) <= 5;
+}
+
+function formatDateParts(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
 }
