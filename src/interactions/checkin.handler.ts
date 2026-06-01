@@ -1,6 +1,7 @@
 import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
 import { deferredEphemeralResponse, rawModalResponse, sendFollowup } from "../discord/response.js";
 import { ensureTodayCheckinCycle } from "../services/checkin-cycle-v2.service.js";
+import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
 import { insertSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
 import { upsertUser } from "../db/users.repository.js";
 import { createMessage, executeWebhook } from "../discord/rest.js";
@@ -12,7 +13,7 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
   return rawModalResponse(MODAL_IDS.CHECKIN, "오늘 인증", [
     {
       type: 18, // LABEL
-      label: "오늘 한 일",
+      label: "📝 오늘 한 일",
       component: {
         type: 4, // TEXT_INPUT
         custom_id: MODAL_FIELDS.CHECKIN.CONTENT,
@@ -23,23 +24,23 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
     },
     {
       type: 18,
-      label: "링크 또는 메모 (선택)",
-      component: {
-        type: 4,
-        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
-        style: 1,
-        placeholder: "https://... 또는 참고 메모",
-        required: false,
-      },
-    },
-    {
-      type: 18,
-      label: "인증 이미지 (선택, 최대 3장)",
+      label: "🖼️ 인증 이미지 (선택, 최대 3장)",
       component: {
         type: 19, // FILE_UPLOAD
         custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
         min_values: 0,
         max_values: 3,
+        required: false,
+      },
+    },
+    {
+      type: 18,
+      label: "🔗 링크 또는 메모 (선택)",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
+        style: 1,
+        placeholder: "https://... 또는 참고 메모",
         required: false,
       },
     },
@@ -66,7 +67,6 @@ async function handleCheckinModalAsync(
 
   const rows = interaction.data?.components ?? [];
 
-  // Label(type 18) 기반 컴포넌트에서 text value 추출
   const getText = (id: string): string => {
     for (const row of rows) {
       if (row.type === 18 && row.component?.custom_id === id)
@@ -77,7 +77,6 @@ async function handleCheckinModalAsync(
     return "";
   };
 
-  // File Upload 컴포넌트에서 attachment ID 배열 추출
   const getFileIds = (id: string): string[] => {
     for (const row of rows) {
       if (row.type === 18 && row.component?.custom_id === id)
@@ -105,6 +104,7 @@ async function handleCheckinModalAsync(
 
   await upsertUser(env.DB, guildId, user.id, displayName);
 
+  // settings와 cycle을 함께 가져옴 (ensureTodayCheckinCycle 내부에서 ensureV2GuildSetup 호출)
   const cycle = await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
 
   if (cycle.status !== "open") {
@@ -121,7 +121,6 @@ async function handleCheckinModalAsync(
     proofUrl,
   });
 
-  // 공개 인증 카드 (Components V2 Container)
   const now = new Date().toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",
     hour: "2-digit",
@@ -133,12 +132,10 @@ async function handleCheckinModalAsync(
     { type: 14, divider: true, spacing: 1 },
     { type: 10, content: content },
   ];
-  if (proofUrl) {
-    cardComponents.push({ type: 10, content: proofUrl });
-  }
+  if (proofUrl) cardComponents.push({ type: 10, content: proofUrl });
   if (imageUrls.length > 0) {
     cardComponents.push({
-      type: 12, // MEDIA_GALLERY
+      type: 12,
       items: imageUrls.map((url) => ({ media: { url } })),
     });
   }
@@ -150,15 +147,21 @@ async function handleCheckinModalAsync(
 
   try {
     let msg: { id: string };
-    if (cycle.webhook_id && cycle.webhook_token) {
-      msg = await executeWebhook(cycle.webhook_id, cycle.webhook_token, cycle.thread_id, {
-        ...messageBody,
-        username: displayName,
-        avatar_url: avatarUrl,
-      });
+
+    // guild settings에서 webhook 정보 가져오기
+    const { settings } = await ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN);
+
+    if (settings.checkin_webhook_id && settings.checkin_webhook_token) {
+      msg = await executeWebhook(
+        settings.checkin_webhook_id,
+        settings.checkin_webhook_token,
+        cycle.thread_id,
+        { ...messageBody, username: displayName, avatar_url: avatarUrl }
+      );
     } else {
       msg = await createMessage(cycle.thread_id, env.DISCORD_BOT_TOKEN, messageBody);
     }
+
     await env.DB.prepare("UPDATE daily_checkin_entries SET entry_message_id = ? WHERE id = ?")
       .bind(msg.id, entry.id).run();
   } catch (err) {
@@ -169,7 +172,7 @@ async function handleCheckinModalAsync(
     "✅ 오늘 인증이 완료되었습니다!", { ephemeral: true });
 }
 
-// /홈 → 인증 버튼
+// /인증 → 인증 버튼
 export function handleCheckinCommand(
   interaction: DiscordInteraction,
   _env: Env,
