@@ -8,14 +8,13 @@ import { createMessage, executeWebhook } from "../discord/rest.js";
 import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-// "오늘 인증" 버튼 → 모달 즉시 반환
 export function handleCheckinButton(_interaction: DiscordInteraction): Response {
   return rawModalResponse(MODAL_IDS.CHECKIN, "오늘 인증", [
     {
-      type: 18, // LABEL
-      label: "📝 오늘 한 일",
+      type: 18,
+      label: "오늘 한 일",
       component: {
-        type: 4, // TEXT_INPUT
+        type: 4,
         custom_id: MODAL_FIELDS.CHECKIN.CONTENT,
         style: 2,
         placeholder: "오늘 공부하거나 수행한 내용을 자유롭게 적어주세요.",
@@ -24,18 +23,7 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
     },
     {
       type: 18,
-      label: "🖼️ 인증 이미지 (선택, 최대 5장)",
-      component: {
-        type: 19, // FILE_UPLOAD
-        custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
-        min_values: 0,
-        max_values: 5,
-        required: false,
-      },
-    },
-    {
-      type: 18,
-      label: "🔗 링크 또는 메모 (선택)",
+      label: "링크 또는 메모 (선택)",
       component: {
         type: 4,
         custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
@@ -44,10 +32,20 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
         required: false,
       },
     },
+    {
+      type: 18,
+      label: "인증 이미지 (선택, 최대 3장)",
+      component: {
+        type: 19,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
+        min_values: 0,
+        max_values: 3,
+        required: false,
+      },
+    },
   ]);
 }
 
-// 모달 제출
 export function handleCheckinModal(
   interaction: DiscordInteraction,
   env: Env,
@@ -104,7 +102,6 @@ async function handleCheckinModalAsync(
 
   await upsertUser(env.DB, guildId, user.id, displayName);
 
-  // settings와 cycle을 함께 가져옴 (ensureTodayCheckinCycle 내부에서 ensureV2GuildSetup 호출)
   const cycle = await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
 
   if (cycle.status !== "open") {
@@ -127,36 +124,26 @@ async function handleCheckinModalAsync(
     minute: "2-digit",
   });
 
-  const escapedContent = content.replace(/```/g, "\\`\\`\\`");
-  const metadataLine = "제출 시각: " + now + " | 작성자: <@" + user.id + ">";
-
   const cardComponents: unknown[] = [
-    { type: 10, content: metadataLine },
+    { type: 10, content: "### " + now },
     { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: "**인증**\n```text\n" + escapedContent + "\n```" },
+    { type: 10, content: content },
   ];
-
+  if (proofUrl) cardComponents.push({ type: 10, content: proofUrl });
   if (imageUrls.length > 0) {
-    cardComponents.push({ type: 14, divider: true, spacing: 1 });
-    cardComponents.push({ type: 10, content: "**이미지**" });
     cardComponents.push({
       type: 12,
       items: imageUrls.map((url) => ({ media: { url } })),
     });
   }
-  if (proofUrl) {
-    cardComponents.push({ type: 10, content: "**URL**\n" + proofUrl });
-  }
 
   const messageBody: Record<string, unknown> = {
     flags: MessageFlags.IS_COMPONENTS_V2,
-    components: [{ type: 17, accent_color: 0xFEE75C, components: cardComponents }],
+    components: [{ type: 17, accent_color: 0x57F287, components: cardComponents }],
   };
 
   try {
     let msg: { id: string };
-
-    // guild settings에서 webhook 정보 가져오기
     const { settings } = await ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN);
 
     if (settings.checkin_webhook_id && settings.checkin_webhook_token) {
@@ -177,10 +164,9 @@ async function handleCheckinModalAsync(
   }
 
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
-    "✅ 오늘 인증이 완료되었습니다!", { ephemeral: true });
+    "인증이 완료되었습니다!", { ephemeral: true });
 }
 
-// /인증 → 인증 버튼
 export function handleCheckinCommand(
   interaction: DiscordInteraction,
   _env: Env,
