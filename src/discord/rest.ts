@@ -3,6 +3,7 @@ export interface DiscordChannel {
   guild_id?: string;
   name: string;
   type: number;
+  parent_id?: string | null;
 }
 
 export interface DiscordMessage {
@@ -49,6 +50,13 @@ export async function createGuildChannel(
     method: "POST",
     body: input,
   });
+}
+
+export async function getChannel(
+  channelId: string,
+  botToken: string
+): Promise<DiscordChannel> {
+  return discordBotRequest<DiscordChannel>(botToken, "/channels/" + channelId);
 }
 
 export async function createMessage(
@@ -167,8 +175,10 @@ export async function channelExists(
   channelId: string,
   botToken: string
 ): Promise<boolean> {
-  const res = await fetch("https://discord.com/api/v10/channels/" + channelId, {
-    headers: { Authorization: "Bot " + botToken },
-  });
-  return res.ok;
+  try {
+    await getChannel(channelId, botToken);
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -162,3 +162,12 @@ export interface VacationEntryRow {
   message_id: string | null;
   created_at: string;
 }
+
+export interface WeeklyVacationCycleRow {
+  id: number;
+  guild_id: string;
+  week_start_date: string;
+  thread_id: string;
+  title: string;
+  created_at: string;
+}

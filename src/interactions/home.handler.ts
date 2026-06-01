@@ -3,6 +3,7 @@ import { buildStudyHomeFlow } from "../flows/study-home.flow.js";
 import { ensureTodayCheckinCycle } from "../services/checkin-cycle-v2.service.js";
 import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
 import { ensureCurrentWeeklyGoalCycle } from "../services/goal-cycle-v2.service.js";
+import { ensureCurrentVacationCycle } from "../services/vacation-cycle.service.js";
 import { MessageFlags, type DiscordInteraction, type Env } from "../types.js";
 
 const MANAGE_GUILD = 0x20n;
@@ -37,6 +38,7 @@ async function handleHomeCommandAsync(
   // 모든 사용자: 오늘 쓰레드/목표 글 없으면 자동 생성 (있으면 스킵)
   try { await ensureCurrentWeeklyGoalCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* 채널 미설정 시 무시 */ }
   try { await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* 채널 미설정 시 무시 */ }
+  try { await ensureCurrentVacationCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* 채널 미설정 시 무시 */ }
 
   const canManageGuild = hasManageGuild(interaction);
 
@@ -51,6 +53,9 @@ async function handleHomeCommandAsync(
 
   // 관리자: 채널 초기화도 수행
   const setup = await ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN);
+  try { await ensureCurrentWeeklyGoalCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* noop */ }
+  try { await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* noop */ }
+  try { await ensureCurrentVacationCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* noop */ }
   const payload = await buildStudyHomeFlow(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
 
   if (setup.createdChannels.length > 0 && setup.settings.study_home_channel_id) {

@@ -2,6 +2,7 @@ import { handleAdmin } from "../commands/handlers.js";
 import { handleVacationCommand, handleVacationModal, VACATION_MODAL_CUSTOM_ID } from "./vacation.handler.js";
 import { handleGoalCommand } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
+import { VACATION_SUBMIT_BUTTON_ID } from "../services/vacation-cycle.service.js";
 import {
   handleCheckinButton,
   handleCheckinModal,
@@ -66,6 +67,9 @@ function routeComponent(
   }
   if (id.startsWith("home:goal") || id.startsWith("goal:")) {
     return handleGoalCommand(interaction, env, ctx);
+  }
+  if (id === VACATION_SUBMIT_BUTTON_ID) {
+    return handleVacationCommand(interaction);
   }
 
   return null;

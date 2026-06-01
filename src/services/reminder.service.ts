@@ -2,6 +2,7 @@ import { getAllGuildSettings } from "../db/guild-settings.repository.js";
 import { isScheduledTime } from "../domain/date.js";
 import type { GuildSettingsRow } from "../db/types.js";
 import { ensureCurrentWeeklyGoalCycle } from "./goal-cycle-v2.service.js";
+import { ensureCurrentVacationCycle } from "./vacation-cycle.service.js";
 import { sendDailyReminder } from "./reminder-notification.service.js";
 import { closeExpiredCheckinCycles, ensureTodayCheckinCycle } from "./checkin-cycle-v2.service.js";
 import { ensureWeeklyLeaderboardCycle } from "./leaderboard-cycle-v2.service.js";
@@ -72,6 +73,7 @@ async function dispatchAction(
 ): Promise<void> {
   if (action === "goal_cycle") {
     await ensureCurrentWeeklyGoalCycle(db, settings.guild_id, botToken);
+    await ensureCurrentVacationCycle(db, settings.guild_id, botToken);
     return;
   }
 
