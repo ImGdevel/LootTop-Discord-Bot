@@ -124,3 +124,41 @@ export async function editChannel(
     body,
   });
 }
+
+export interface DiscordWebhook {
+  id: string;
+  token: string;
+}
+
+export async function createWebhook(
+  channelId: string,
+  botToken: string,
+  name: string
+): Promise<DiscordWebhook> {
+  return discordBotRequest<DiscordWebhook>(botToken, "/channels/" + channelId + "/webhooks", {
+    method: "POST",
+    body: { name },
+  });
+}
+
+export async function executeWebhook(
+  webhookId: string,
+  webhookToken: string,
+  threadId: string,
+  body: Record<string, unknown>
+): Promise<DiscordMessage> {
+  const url =
+    "https://discord.com/api/v10/webhooks/" +
+    webhookId + "/" + webhookToken +
+    "?thread_id=" + threadId + "&wait=true";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error("executeWebhook failed: " + res.status + " " + text);
+  }
+  return res.json() as Promise<DiscordMessage>;
+}

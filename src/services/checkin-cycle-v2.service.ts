@@ -1,6 +1,6 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getDailyCheckinCycle, insertDailyCheckinCycle, updateDailyCheckinCycleStatus } from "../db/daily-checkin-cycles.repository.js";
-import { createMessage, editChannel, startThreadFromMessage } from "../discord/rest.js";
+import { createMessage, createWebhook, editChannel, startThreadFromMessage } from "../discord/rest.js";
 import { sendChannelMessage } from "../discord/response.js";
 import { buildDailyCheckinThreadIntroCard } from "../ui/cards/daily-checkin-thread.card.js";
 import { V2_BUTTON_IDS } from "../ui/builders/ids.js";
@@ -55,6 +55,17 @@ export async function ensureTodayCheckinCycle(
 
   await sendChannelMessage(thread.id, botToken, undefined, introCard.components, MessageFlags.IS_COMPONENTS_V2);
 
+  // 인증 카드를 유저 프로필로 표시하기 위한 웹훅 생성
+  let webhookId: string | undefined;
+  let webhookToken: string | undefined;
+  try {
+    const webhook = await createWebhook(thread.id, botToken, "인증 카드");
+    webhookId = webhook.id;
+    webhookToken = webhook.token;
+  } catch (err) {
+    console.error("[checkin-cycle] 웹훅 생성 실패 (봇 메시지로 fallback):", err);
+  }
+
   return insertDailyCheckinCycle(db, {
     guildId,
     checkinDate: localDate,
@@ -62,6 +73,8 @@ export async function ensureTodayCheckinCycle(
     title,
     opensAt: now.toISOString(),
     closesAt,
+    webhookId,
+    webhookToken,
   });
 }
 

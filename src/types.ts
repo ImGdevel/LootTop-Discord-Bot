@@ -63,6 +63,7 @@ export interface DiscordUser {
   username: string;
   global_name?: string;
   discriminator: string;
+  avatar?: string | null;
 }
 
 export interface DiscordModalComponent {

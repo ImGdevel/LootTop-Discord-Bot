@@ -24,14 +24,16 @@ export async function insertDailyCheckinCycle(
     title: string;
     opensAt: string;
     closesAt: string;
+    webhookId?: string;
+    webhookToken?: string;
   }
 ): Promise<DailyCheckinCycleRow> {
   const now = new Date().toISOString();
   await db
     .prepare(`
       INSERT INTO daily_checkin_cycles
-        (guild_id, checkin_date, thread_id, title, opens_at, closes_at, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+        (guild_id, checkin_date, thread_id, title, opens_at, closes_at, status, webhook_id, webhook_token, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
     `)
     .bind(
       input.guildId,
@@ -40,6 +42,8 @@ export async function insertDailyCheckinCycle(
       input.title,
       input.opensAt,
       input.closesAt,
+      input.webhookId ?? null,
+      input.webhookToken ?? null,
       now
     )
     .run();

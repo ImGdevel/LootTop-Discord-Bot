@@ -18,6 +18,14 @@ export function getWeekEndDate(weekStartDate: string): string {
   return sunday.toISOString().slice(0, 10);
 }
 
+// "2026-06-01" -> "6월 1주차"
+export function formatWeekLabel(weekStartDate: string): string {
+  const date = new Date(weekStartDate + "T00:00:00");
+  const month = date.getMonth() + 1;
+  const weekNum = Math.ceil(date.getDate() / 7);
+  return month + "월 " + weekNum + "주차";
+}
+
 export function isScheduledTime(
   nowUtc: Date,
   localTime: string,

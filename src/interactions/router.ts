@@ -1,48 +1,38 @@
 import { handleSettings } from "../commands/handlers.js";
-import {
-  handleGoalCommand,
-  handleGoalWriteButton,
-  handleGoalWriteModal,
-  handleGoalProofTypeSelect,
-  handleGoalRestDaysSelect,
-  handleGoalSaveButton,
-  handleGoalAddItemButton,
-  handleGoalAddItemModal,
-} from "./plan.handler.js";
+import { handleGoalCommand } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
 import {
-  handleCheckinCommand,
   handleCheckinButton,
-  handleCheckinItemSelect,
   handleCheckinModal,
+  handleCheckinCommand,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
 import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export async function routeInteraction(
+export function routeInteraction(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Promise<Response | null> {
+): Response | null {
   switch (interaction.type) {
     case InteractionType.APPLICATION_COMMAND:
-      return await routeCommand(interaction, env, ctx);
+      return routeCommand(interaction, env, ctx);
     case InteractionType.MESSAGE_COMPONENT:
-      return await routeComponent(interaction, env, ctx);
+      return routeComponent(interaction, env, ctx);
     case InteractionType.MODAL_SUBMIT:
-      return await routeModal(interaction, env, ctx);
+      return routeModal(interaction, env, ctx);
     default:
       return null;
   }
 }
 
-async function routeCommand(
+function routeCommand(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Promise<Response | null> {
+): Response | null {
   switch (interaction.data?.name) {
     case COMMANDS.HOME:
       return handleHomeCommand(interaction, env, ctx);
@@ -53,65 +43,36 @@ async function routeCommand(
   }
 }
 
-async function routeComponent(
+function routeComponent(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Promise<Response | null> {
-  const customId = interaction.data?.custom_id ?? "";
+): Response | null {
+  const id = interaction.data?.custom_id ?? "";
 
-  // 목표 wizard
-  if (customId.startsWith("goal:create") || customId.startsWith("goal:edit")) {
-    return handleGoalWriteButton(interaction);
+  if (id.startsWith("checkin:submit") || id.startsWith("home:checkin")) {
+    return handleCheckinButton(interaction);
   }
-  if (customId.startsWith("goal:proof:")) {
-    return handleGoalProofTypeSelect(interaction, env, ctx);
-  }
-  if (customId.startsWith("goal:rest:")) {
-    return handleGoalRestDaysSelect(interaction, env, ctx);
-  }
-  if (customId.startsWith("goal:save:")) {
-    return handleGoalSaveButton(interaction, env, ctx);
-  }
-  if (customId.startsWith("goal:add:")) {
-    return handleGoalAddItemButton(interaction);
-  }
-
-  // 홈 버튼 → 목표/인증/리더보드 이동
-  if (customId.startsWith("home:goal")) {
-    return handleGoalCommand(interaction, env, ctx);
-  }
-  if (customId.startsWith("home:checkin") || customId.startsWith("checkin:submit")) {
-    return await handleCheckinButton(interaction, env);
-  }
-  if (customId.startsWith("checkin:item:select")) {
-    return await handleCheckinItemSelect(interaction, env);
-  }
-  if (customId.startsWith("home:leaderboard") || customId.startsWith("leaderboard:view")) {
+  if (id.startsWith("home:leaderboard") || id.startsWith("leaderboard:view")) {
     return handleLeaderboardCommand(interaction, env, ctx);
   }
-  if (customId.startsWith("home:refresh")) {
+  if (id.startsWith("home:refresh")) {
     return handleHomeCommand(interaction, env, ctx);
+  }
+  if (id.startsWith("home:goal") || id.startsWith("goal:")) {
+    return handleGoalCommand(interaction, env, ctx);
   }
 
   return null;
 }
 
-async function routeModal(
+function routeModal(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Promise<Response | null> {
-  switch (interaction.data?.custom_id) {
-    case MODAL_IDS.GOAL_WRITE:
-      return handleGoalWriteModal(interaction, env, ctx);
-    default:
-      if ((interaction.data?.custom_id ?? "").startsWith(MODAL_IDS.GOAL_ADD_ITEM + ":")) {
-        return handleGoalAddItemModal(interaction, env, ctx);
-      }
-      if ((interaction.data?.custom_id ?? "").startsWith(MODAL_IDS.CHECKIN_TODAY + ":")) {
-        return handleCheckinModal(interaction, env, ctx);
-      }
-      return null;
+): Response | null {
+  if (interaction.data?.custom_id === MODAL_IDS.CHECKIN) {
+    return handleCheckinModal(interaction, env, ctx);
   }
+  return null;
 }

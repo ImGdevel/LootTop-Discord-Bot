@@ -1,139 +1,52 @@
-import { MODAL_IDS } from "../commands/definitions.js";
-import {
-  deferredEphemeralResponse,
-  modalResponse,
-  rawModalResponse,
-  selectMenuResponse,
-  sendFollowup,
-} from "../discord/response.js";
-import { buildTodayCheckinFlow } from "../flows/checkin.flow.js";
-import { getTodayCheckinContext, submitTodayCheckinV2 } from "../services/checkin-v2.service.js";
-import type { DiscordAttachment, DiscordInteraction, Env } from "../types.js";
+import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
+import { deferredEphemeralResponse, rawModalResponse, sendFollowup } from "../discord/response.js";
+import { ensureTodayCheckinCycle } from "../services/checkin-cycle-v2.service.js";
+import { insertSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
+import { upsertUser } from "../db/users.repository.js";
+import { createMessage, executeWebhook } from "../discord/rest.js";
+import { MessageFlags } from "../types.js";
+import type { DiscordInteraction, Env } from "../types.js";
 
-export function handleCheckinCommand(
-  interaction: DiscordInteraction,
-  env: Env,
-  ctx: ExecutionContext
-): Response {
-  ctx.waitUntil(handleCheckinCommandAsync(interaction, env));
-  return deferredEphemeralResponse();
-}
-
-async function handleCheckinCommandAsync(
-  interaction: DiscordInteraction,
-  env: Env
-): Promise<void> {
-  const guildId = interaction.guild_id;
-  const user = interaction.member?.user ?? interaction.user;
-  if (!guildId || !user) return;
-
-  const payload = await buildTodayCheckinFlow(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
-    flags: payload.flags,
-    components: payload.components,
-  });
-}
-
-export async function handleCheckinButton(
-  interaction: DiscordInteraction,
-  env: Env
-): Promise<Response> {
-  const guildId = interaction.guild_id;
-  const user = interaction.member?.user ?? interaction.user;
-  if (!guildId || !user) {
-    return deferredEphemeralResponse();
-  }
-
-  const context = await getTodayCheckinContext(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
-  if (!context || context.goalItems.length === 0) {
-    return deferredEphemeralResponse();
-  }
-
-  const options = context.goalItems.slice(0, 25).map((item) => ({
-    label: item.label.slice(0, 100),
-    value: String(item.id),
-    description: proofTypeDescription(item.proofType),
-  }));
-
-  return selectMenuResponse(
-    "checkin:item:select",
-    "오늘 인증할 목표 항목 선택",
-    options,
-    1,
-    1
-  );
-}
-
-export async function handleCheckinItemSelect(
-  interaction: DiscordInteraction,
-  env: Env
-): Promise<Response> {
-  const guildId = interaction.guild_id;
-  const user = interaction.member?.user ?? interaction.user;
-  const selectedId = interaction.data?.values?.[0];
-  if (!guildId || !user || !selectedId) {
-    return deferredEphemeralResponse();
-  }
-
-  const context = await getTodayCheckinContext(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
-  const goalItem = context?.goalItems.find((item) => String(item.id) === selectedId);
-  if (!goalItem) {
-    return deferredEphemeralResponse();
-  }
-
-  return buildCheckinItemModal(goalItem.id, goalItem.label, goalItem.proofType);
-}
-
-function buildCheckinItemModal(goalItemId: number, label: string, proofType: string): Response {
-  const title = "오늘 인증";
-  const customId = MODAL_IDS.CHECKIN_TODAY + ":" + goalItemId + ":" + proofType;
-
-  if (proofType === "checkbox") {
-    return rawModalResponse(customId, title, [
-      {
-        type: 18,
-        label,
-        description: "완료했다면 체크 후 제출하세요.",
-        component: {
-          type: 22,
-          custom_id: "checked",
-          options: [{ label: "완료함", value: "done" }],
-        },
-      },
-    ]);
-  }
-
-  if (proofType === "image") {
-    return rawModalResponse(customId, title, [
-      {
-        type: 18,
-        label,
-        description: "인증 이미지를 첨부하세요.",
-        component: {
-          type: 19,
-          custom_id: "image_upload",
-          min_values: 1,
-          max_values: 1,
-          required: true,
-        },
-      },
-    ]);
-  }
-
-  return modalResponse(customId, title, [
+// "오늘 인증" 버튼 → 모달 즉시 반환
+export function handleCheckinButton(_interaction: DiscordInteraction): Response {
+  return rawModalResponse(MODAL_IDS.CHECKIN, "오늘 인증", [
     {
-      label,
-      customId: proofType === "url" ? "url_value" : "text_value",
-      style: 2,
-      placeholder:
-        proofType === "url"
-          ? "https://example.com"
-          : "오늘 수행한 내용을 입력해 주세요.",
-      required: true,
+      type: 18, // LABEL
+      label: "오늘 한 일",
+      component: {
+        type: 4, // TEXT_INPUT
+        custom_id: MODAL_FIELDS.CHECKIN.CONTENT,
+        style: 2,
+        placeholder: "오늘 공부하거나 수행한 내용을 자유롭게 적어주세요.",
+        required: true,
+      },
+    },
+    {
+      type: 18,
+      label: "링크 또는 메모 (선택)",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
+        style: 1,
+        placeholder: "https://... 또는 참고 메모",
+        required: false,
+      },
+    },
+    {
+      type: 18,
+      label: "인증 이미지 (선택, 최대 3장)",
+      component: {
+        type: 19, // FILE_UPLOAD
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
+        min_values: 0,
+        max_values: 3,
+        required: false,
+      },
     },
   ]);
 }
 
+// 모달 제출
 export function handleCheckinModal(
   interaction: DiscordInteraction,
   env: Env,
@@ -151,122 +64,116 @@ async function handleCheckinModalAsync(
   const user = interaction.member?.user ?? interaction.user;
   if (!guildId || !user) return;
 
-  const customId = interaction.data?.custom_id ?? "";
-  const modalPrefix = MODAL_IDS.CHECKIN_TODAY + ":";
-  const suffix = customId.startsWith(modalPrefix) ? customId.slice(modalPrefix.length) : "";
-  const [goalItemIdRaw, proofType = "text"] = suffix.split(":");
-  const goalItemId = Number(goalItemIdRaw);
-  if (!goalItemId) return;
+  const rows = interaction.data?.components ?? [];
 
-  const context = await getTodayCheckinContext(env.DB, guildId, user.id, env.DISCORD_BOT_TOKEN);
-  const goalItem = context?.goalItems.find((item) => item.id === goalItemId);
-  if (!goalItem) {
-    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, "현재 주간 목표에 없는 항목입니다.", {
-      ephemeral: true,
-    });
-    return;
-  }
+  // Label(type 18) 기반 컴포넌트에서 text value 추출
+  const getText = (id: string): string => {
+    for (const row of rows) {
+      if (row.type === 18 && row.component?.custom_id === id)
+        return (row.component.value ?? "").trim();
+      for (const c of row.components ?? [])
+        if (c.custom_id === id) return c.value.trim();
+    }
+    return "";
+  };
 
-  const itemPayload = parseCheckinModalPayload(interaction, proofType, goalItemId);
-  if (!itemPayload) {
-    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, "제출할 인증 내용이 없습니다.", {
-      ephemeral: true,
-    });
-    return;
-  }
+  // File Upload 컴포넌트에서 attachment ID 배열 추출
+  const getFileIds = (id: string): string[] => {
+    for (const row of rows) {
+      if (row.type === 18 && row.component?.custom_id === id)
+        return row.component.values ?? [];
+    }
+    return [];
+  };
+
+  const content = getText(MODAL_FIELDS.CHECKIN.CONTENT);
+  const proofUrl = getText(MODAL_FIELDS.CHECKIN.PROOF_URL) || null;
+  const imageIds = getFileIds(MODAL_FIELDS.CHECKIN.PROOF_IMAGE);
+
+  const resolvedAttachments = interaction.data?.resolved?.attachments ?? {};
+  const imageUrls = imageIds
+    .map((id) => resolvedAttachments[id])
+    .filter((a): a is NonNullable<typeof a> => !!a?.content_type?.startsWith("image/"))
+    .map((a) => a.url);
+
+  if (!content) return;
 
   const displayName = user.global_name ?? user.username;
-  const result = await submitTodayCheckinV2(
-    env.DB,
+  const avatarUrl = user.avatar
+    ? "https://cdn.discordapp.com/avatars/" + user.id + "/" + user.avatar + ".png?size=128"
+    : "https://cdn.discordapp.com/embed/avatars/" + (Number(user.discriminator) % 5) + ".png";
+
+  await upsertUser(env.DB, guildId, user.id, displayName);
+
+  const cycle = await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
+
+  if (cycle.status !== "open") {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "오늘 인증 마감 시간이 지났습니다.", { ephemeral: true });
+    return;
+  }
+
+  const entry = await insertSimpleCheckin(env.DB, {
     guildId,
-    user.id,
-    displayName,
-    env.DISCORD_BOT_TOKEN,
-    [itemPayload]
-  );
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, result.message, { ephemeral: true });
+    discordUserId: user.id,
+    dailyCheckinCycleId: cycle.id,
+    content,
+    proofUrl,
+  });
+
+  // 공개 인증 카드 (Components V2 Container)
+  const now = new Date().toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const cardComponents: unknown[] = [
+    { type: 10, content: "### " + now },
+    { type: 14, divider: true, spacing: 1 },
+    { type: 10, content: content },
+  ];
+  if (proofUrl) {
+    cardComponents.push({ type: 10, content: proofUrl });
+  }
+  if (imageUrls.length > 0) {
+    cardComponents.push({
+      type: 12, // MEDIA_GALLERY
+      items: imageUrls.map((url) => ({ media: { url } })),
+    });
+  }
+
+  const messageBody: Record<string, unknown> = {
+    flags: MessageFlags.IS_COMPONENTS_V2,
+    components: [{ type: 17, accent_color: 0x57F287, components: cardComponents }],
+  };
+
+  try {
+    let msg: { id: string };
+    if (cycle.webhook_id && cycle.webhook_token) {
+      msg = await executeWebhook(cycle.webhook_id, cycle.webhook_token, cycle.thread_id, {
+        ...messageBody,
+        username: displayName,
+        avatar_url: avatarUrl,
+      });
+    } else {
+      msg = await createMessage(cycle.thread_id, env.DISCORD_BOT_TOKEN, messageBody);
+    }
+    await env.DB.prepare("UPDATE daily_checkin_entries SET entry_message_id = ? WHERE id = ?")
+      .bind(msg.id, entry.id).run();
+  } catch (err) {
+    console.error("[checkin] 카드 게시 실패:", err);
+  }
+
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+    "✅ 오늘 인증이 완료되었습니다!", { ephemeral: true });
 }
 
-function parseCheckinModalPayload(
+// /홈 → 인증 버튼
+export function handleCheckinCommand(
   interaction: DiscordInteraction,
-  proofType: string,
-  goalItemId: number
-): {
-  goalItemId: number;
-  checked?: boolean | null;
-  textValue?: string | null;
-  urlValue?: string | null;
-  attachmentUrl?: string | null;
-} | null {
-  if (proofType === "checkbox") {
-    const values = getModalComponentValues(interaction, "checked");
-    return values.includes("done") ? { goalItemId, checked: true } : null;
-  }
-
-  if (proofType === "image") {
-    const uploadIds = getModalComponentValues(interaction, "image_upload");
-    const attachments = interaction.data?.resolved?.attachments ?? {};
-    const attachment = uploadIds.map((id) => attachments[id]).find(Boolean);
-    return attachment?.url ? { goalItemId, attachmentUrl: attachment.url } : null;
-  }
-
-  const value = getModalComponentTextValue(
-    interaction,
-    proofType === "url" ? "url_value" : "text_value"
-  )?.trim();
-  if (!value) return null;
-  return proofType === "url"
-    ? { goalItemId, urlValue: value }
-    : { goalItemId, textValue: value };
-}
-
-function getModalComponentValues(interaction: DiscordInteraction, customId: string): string[] {
-  const components = interaction.data?.components ?? [];
-  const values: string[] = [];
-
-  for (const row of components) {
-    const labeled = row.component;
-    if (labeled?.custom_id === customId && Array.isArray(labeled.values)) {
-      values.push(...labeled.values);
-    }
-
-    for (const comp of row.components ?? []) {
-      if (comp.custom_id === customId && Array.isArray((comp as { values?: string[] }).values)) {
-        values.push(...((comp as { values?: string[] }).values ?? []));
-      }
-    }
-  }
-
-  return values;
-}
-
-function getModalComponentTextValue(interaction: DiscordInteraction, customId: string): string | null {
-  const components = interaction.data?.components ?? [];
-  for (const row of components) {
-    const labeled = row.component;
-    if (labeled?.custom_id === customId && typeof labeled.value === "string") {
-      return labeled.value;
-    }
-
-    for (const comp of row.components ?? []) {
-      if (comp.custom_id === customId && typeof comp.value === "string") {
-        return comp.value;
-      }
-    }
-  }
-
-  return null;
-}
-
-function proofTypeDescription(proofType: string): string {
-  switch (proofType) {
-    case "url":
-      return "URL 인증";
-    case "image":
-      return "이미지 업로드";
-    case "checkbox":
-      return "체크 완료";
-    default:
-      return "텍스트 인증";
-  }
+  _env: Env,
+  _ctx: ExecutionContext
+): Response {
+  return handleCheckinButton(interaction);
 }

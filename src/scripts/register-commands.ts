@@ -1,11 +1,44 @@
+import { readFileSync } from "fs";
+import { resolve } from "path";
 import { COMMAND_DEFINITIONS } from "../commands/definitions.js";
+
+// .env.discord 파일 자동 로드 (process.env 우선)
+function loadEnvFile(): void {
+  const candidates = [
+    resolve(process.cwd(), ".env.discord"),
+    resolve(process.cwd(), ".env"),
+  ];
+  for (const filePath of candidates) {
+    try {
+      const content = readFileSync(filePath, "utf-8");
+      for (const line of content.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eq = trimmed.indexOf("=");
+        if (eq < 0) continue;
+        const key = trimmed.slice(0, eq).trim();
+        const value = trimmed.slice(eq + 1).trim();
+        if (key && !(key in process.env)) {
+          process.env[key] = value;
+        }
+      }
+      console.log(`[env] ${filePath} 로드 완료`);
+      return;
+    } catch {
+      // 파일 없으면 무시
+    }
+  }
+}
+
+loadEnvFile();
 
 const APPLICATION_ID = process.env["DISCORD_APPLICATION_ID"];
 const BOT_TOKEN = process.env["DISCORD_BOT_TOKEN"];
-const GUILD_ID = process.env["GUILD_ID"];
+const GUILD_ID = process.env["DISCORD_GUILD_ID"] ?? process.env["GUILD_ID"];
 
 if (!APPLICATION_ID || !BOT_TOKEN) {
-  console.error("DISCORD_APPLICATION_ID와 DISCORD_BOT_TOKEN 환경변수를 설정해주세요.");
+  console.error("DISCORD_APPLICATION_ID와 DISCORD_BOT_TOKEN이 필요합니다.");
+  console.error(".env.discord 파일을 확인해 주세요.");
   process.exit(1);
 }
 

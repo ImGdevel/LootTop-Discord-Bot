@@ -1,7 +1,3 @@
-/**
- * D1 테이블 Row 타입 정의
- */
-
 export interface GuildSettingsRow {
   guild_id: string;
   timezone: string;
@@ -30,6 +26,58 @@ export interface UserRow {
   updated_at: string;
 }
 
+export type GoalProofType = "text" | "url" | "image" | "checkbox";
+
+export interface WeeklyGoalCycleRow {
+  id: number;
+  guild_id: string;
+  week_start_date: string;
+  week_end_date: string;
+  forum_thread_id: string;
+  title: string;
+  status: "open" | "closed" | "archived";
+  published_at: string;
+  created_at: string;
+}
+
+export interface DailyCheckinCycleRow {
+  id: number;
+  guild_id: string;
+  checkin_date: string;
+  thread_id: string;
+  title: string;
+  opens_at: string;
+  closes_at: string;
+  status: "open" | "closed" | "archived";
+  webhook_id: string | null;
+  webhook_token: string | null;
+  created_at: string;
+}
+
+export interface DailyCheckinEntryRow {
+  id: number;
+  guild_id: string;
+  discord_user_id: string;
+  daily_checkin_cycle_id: number;
+  entry_message_id: string | null;
+  content: string | null;
+  proof_url: string | null;
+  submitted_at: string;
+  status: "valid" | "late" | "discarded";
+}
+
+export interface WeeklyLeaderboardCycleRow {
+  id: number;
+  guild_id: string;
+  week_start_date: string;
+  week_end_date: string;
+  forum_thread_id: string;
+  title: string;
+  published_at: string;
+  created_at: string;
+}
+
+// Legacy (V1) — 이행 기간 유지
 export interface WeeklyPlanRow {
   id: number;
   guild_id: string;
@@ -38,7 +86,7 @@ export interface WeeklyPlanRow {
   week_end_date: string;
   goal_text: string;
   target_count: number;
-  status: 'active' | 'archived';
+  status: "active" | "archived";
   created_at: string;
   updated_at: string;
 }
@@ -54,21 +102,7 @@ export interface DailyCheckinRow {
   created_at: string;
 }
 
-// V2 types
-export type GoalProofType = "text" | "url" | "image" | "checkbox";
-
-export interface WeeklyGoalCycleRow {
-  id: number;
-  guild_id: string;
-  week_start_date: string;
-  week_end_date: string;
-  forum_thread_id: string;
-  title: string;
-  status: "open" | "closed" | "archived";
-  published_at: string;
-  created_at: string;
-}
-
+// V2 goal types (이행 기간 유지)
 export interface UserDailyGoalRow {
   id: number;
   guild_id: string;
@@ -91,28 +125,6 @@ export interface UserDailyGoalItemRow {
   created_at: string;
 }
 
-export interface DailyCheckinCycleRow {
-  id: number;
-  guild_id: string;
-  checkin_date: string;
-  thread_id: string;
-  title: string;
-  opens_at: string;
-  closes_at: string;
-  status: "open" | "closed" | "archived";
-  created_at: string;
-}
-
-export interface DailyCheckinEntryRow {
-  id: number;
-  guild_id: string;
-  discord_user_id: string;
-  daily_checkin_cycle_id: number;
-  entry_message_id: string | null;
-  submitted_at: string;
-  status: "valid" | "late" | "discarded";
-}
-
 export interface DailyCheckinEntryItemRow {
   id: number;
   daily_checkin_entry_id: number;
@@ -123,18 +135,6 @@ export interface DailyCheckinEntryItemRow {
   attachment_url: string | null;
 }
 
-export interface WeeklyLeaderboardCycleRow {
-  id: number;
-  guild_id: string;
-  week_start_date: string;
-  week_end_date: string;
-  forum_thread_id: string;
-  title: string;
-  published_at: string;
-  created_at: string;
-}
-
-// Wizard session
 export interface GoalWizardSessionRow {
   id: string;
   guild_id: string;

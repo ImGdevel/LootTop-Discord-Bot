@@ -18,8 +18,7 @@ async function handleLeaderboardAsync(
   const guildId = interaction.guild_id;
   if (!guildId) return;
   const payload = await buildLeaderboardFlow(env.DB, guildId);
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, payload.content, {
     flags: payload.flags,
-    components: payload.components,
   });
 }

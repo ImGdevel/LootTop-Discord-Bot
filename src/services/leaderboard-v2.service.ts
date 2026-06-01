@@ -1,92 +1,49 @@
-import { getWeeklyGoalCycle } from "../db/weekly-goal-cycles.repository.js";
-import { getUserDailyGoalItems, getUserDailyGoalsForCycle } from "../db/user-daily-goals.repository.js";
-import { getWeeklyGoalCompletionCounts } from "../db/daily-checkin-entries.repository.js";
-import { getUser } from "../db/users.repository.js";
+import { createForumThread } from "../discord/rest.js";
 import { getGuildSettings } from "../db/guild-settings.repository.js";
-import { getWeekEndDate, getWeekStartDate, toLocalDateString } from "../domain/date.js";
+import {
+  getWeeklyLeaderboardCycle,
+  insertWeeklyLeaderboardCycle,
+} from "../db/weekly-leaderboard-cycles.repository.js";
+import { buildPublicLeaderboard } from "../flows/leaderboard.flow.js";
+import { getWeekStartDate, getWeekEndDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
+import type { WeeklyLeaderboardCycleRow } from "../db/types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
 
-export interface LeaderboardV2Entry {
-  rank: number;
-  displayName: string;
-  completionCount: number;
-  targetCount: number;
-  achievementRate: number;
-}
-
-export interface LeaderboardV2Result {
-  entries: LeaderboardV2Entry[];
-  weekStartDate: string;
-  weekEndDate: string;
-}
-
-function getRestDayCount(restDaysJson: string): number {
-  try {
-    const days = JSON.parse(restDaysJson) as string[];
-    return Array.isArray(days) ? days.length : 2;
-  } catch {
-    return 2;
-  }
-}
-
-export async function buildLeaderboardV2(
+export async function ensureWeeklyLeaderboardCycle(
   db: D1Database,
   guildId: string,
-  weekStartDate?: string
-): Promise<LeaderboardV2Result> {
-  let targetWeekStart = weekStartDate;
-  if (!targetWeekStart) {
-    const settings = await getGuildSettings(db, guildId);
-    const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
-    const localDate = toLocalDateString(new Date(), timezone);
-    targetWeekStart = getWeekStartDate(localDate);
-  }
-  const weekEndDate = getWeekEndDate(targetWeekStart);
-  const cycle = await getWeeklyGoalCycle(db, guildId, targetWeekStart);
-  if (!cycle) {
-    return { entries: [], weekStartDate: targetWeekStart, weekEndDate };
-  }
+  botToken: string,
+  now = new Date()
+): Promise<WeeklyLeaderboardCycleRow> {
+  const settings = await getGuildSettings(db, guildId);
+  const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
+  const localDate = toLocalDateString(now, timezone);
+  const weekStartDate = getWeekStartDate(localDate);
+  const weekEndDate = getWeekEndDate(weekStartDate);
 
-  const goals = await getUserDailyGoalsForCycle(db, cycle.id);
-  const completionRows = await getWeeklyGoalCompletionCounts(db, guildId, targetWeekStart, weekEndDate);
-  const completionMap = new Map<string, number>();
-  for (const row of completionRows) {
-    completionMap.set(
-      row.discord_user_id + ":" + row.goal_item_id,
-      row.count
-    );
-  }
+  const existing = await getWeeklyLeaderboardCycle(db, guildId, weekStartDate);
+  if (existing) return existing;
 
-  const entries = await Promise.all(goals.map(async (goal) => {
-    const items = await getUserDailyGoalItems(db, goal.id);
-    const activeDays = Math.max(0, 7 - getRestDayCount(goal.rest_days_json));
-    const targetCount = Math.max(1, activeDays * items.length);
-    let completionCount = 0;
-    for (const item of items) {
-      const count = completionMap.get(goal.discord_user_id + ":" + item.id) ?? 0;
-      completionCount += Math.min(count, activeDays);
-    }
-    const achievementRate = Math.min(Math.round((completionCount / targetCount) * 100), 100);
-    const user = await getUser(db, guildId, goal.discord_user_id);
-    return {
-      rank: 0,
-      displayName: user?.display_name_snapshot ?? goal.discord_user_id,
-      completionCount,
-      targetCount,
-      achievementRate,
-    };
-  }));
+  const forumChannelId = settings?.leaderboard_forum_channel_id;
+  if (!forumChannelId) throw new Error("leaderboard_forum_channel_id not configured");
 
-  entries.sort((a, b) => {
-    if (b.achievementRate !== a.achievementRate) return b.achievementRate - a.achievementRate;
-    if (b.completionCount !== a.completionCount) return b.completionCount - a.completionCount;
-    return a.displayName.localeCompare(b.displayName);
+  const weekLabel = formatWeekLabel(weekStartDate);
+  const title = weekLabel + " 리더보드";
+  const content = await buildPublicLeaderboard(db, guildId);
+
+  const thread = await createForumThread(forumChannelId, botToken, {
+    name: title,
+    auto_archive_duration: 10080,
+    message: { content },
   });
 
-  return {
-    entries: entries.map((entry, index) => ({ ...entry, rank: index + 1 })),
-    weekStartDate: targetWeekStart,
+  return insertWeeklyLeaderboardCycle(db, {
+    guildId,
+    weekStartDate,
     weekEndDate,
-  };
+    forumThreadId: thread.id,
+    title,
+    publishedAt: now.toISOString(),
+  });
 }

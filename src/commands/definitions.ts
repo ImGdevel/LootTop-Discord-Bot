@@ -30,12 +30,7 @@ export const COMMAND_DEFINITIONS = [
               { name: "리더보드 포럼", value: "리더보드포럼" },
             ],
           },
-          {
-            type: 7,
-            name: "채널",
-            description: "매핑할 기존 채널",
-            required: true,
-          },
+          { type: 7, name: "채널", description: "매핑할 채널", required: true },
         ],
       },
       {
@@ -55,25 +50,15 @@ export const COMMAND_DEFINITIONS = [
               { name: "리더보드 생성", value: "리더보드생성" },
             ],
           },
-          {
-            type: 3,
-            name: "시간",
-            description: "설정할 시간 (HH:MM 형식)",
-            required: true,
-          },
+          { type: 3, name: "시간", description: "HH:MM 형식", required: true },
         ],
       },
       {
         type: 1,
         name: "타임존",
-        description: "서버 기준 타임존을 설정합니다.",
+        description: "타임존을 설정합니다.",
         options: [
-          {
-            type: 3,
-            name: "값",
-            description: "타임존 (예: Asia/Seoul, UTC)",
-            required: true,
-          },
+          { type: 3, name: "값", description: "예: Asia/Seoul", required: true },
         ],
       },
     ],
@@ -85,30 +70,18 @@ export const COMMANDS = {
   SETTINGS: "설정",
 } as const;
 
-export const BUTTON_IDS = {
-  GOAL_WRITE: "btn_goal_write_v2",
-  CHECKIN_TODAY: "btn_checkin_today_v2",
-  LEADERBOARD_VIEW: "btn_leaderboard_view_v2",
-} as const;
-
 export const MODAL_IDS = {
-  GOAL_WRITE: "modal_goal_write_v2",
-  GOAL_ADD_ITEM: "modal_goal_add_item_v2",
-  CHECKIN_TODAY: "modal_checkin_today_v2",
+  CHECKIN: "modal_checkin_simple",
 } as const;
 
 export const MODAL_FIELDS = {
-  GOAL: {
-    GOAL_1: "goal_1",
-    GOAL_2: "goal_2",
-    GOAL_3: "goal_3",
-    GOAL_4: "goal_4",
-    GOAL_5: "goal_5",
-    GOAL_ADD: "goal_add",
-  },
   CHECKIN: {
-    ITEM_1: "item_1",
-    ITEM_2: "item_2",
-    ITEM_3: "item_3",
+    CONTENT: "checkin_content",
+    PROOF_URL: "checkin_proof_url",
+    PROOF_IMAGE: "checkin_proof_image",
   },
+} as const;
+
+export const BUTTON_IDS = {
+  CHECKIN: "checkin:submit",
 } as const;
