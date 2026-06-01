@@ -1,1 +1,8 @@
-npm run validate:commit-message -- "$1"
+if command -v npm >/dev/null 2>&1; then
+  npm run validate:commit-message -- "$1"
+elif command -v npm.cmd >/dev/null 2>&1; then
+  npm.cmd run validate:commit-message -- "$1"
+else
+  echo "npm not found"
+  exit 127
+fi

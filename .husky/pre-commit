@@ -1,1 +1,8 @@
-npm run validate:repo && npm run type-check
+if command -v npm >/dev/null 2>&1; then
+  npm run validate:repo && npm run type-check
+elif command -v npm.cmd >/dev/null 2>&1; then
+  npm.cmd run validate:repo && npm.cmd run type-check
+else
+  echo "npm not found"
+  exit 127
+fi
