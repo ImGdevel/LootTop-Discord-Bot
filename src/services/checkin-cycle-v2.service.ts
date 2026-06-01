@@ -1,6 +1,5 @@
-import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getDailyCheckinCycle, insertDailyCheckinCycle, updateDailyCheckinCycleStatus } from "../db/daily-checkin-cycles.repository.js";
-import { createMessage, createWebhook, editChannel, startThreadFromMessage } from "../discord/rest.js";
+import { channelExists, createMessage, editChannel, startThreadFromMessage } from "../discord/rest.js";
 import { sendChannelMessage } from "../discord/response.js";
 import { buildDailyCheckinThreadIntroCard } from "../ui/cards/daily-checkin-thread.card.js";
 import { V2_BUTTON_IDS } from "../ui/builders/ids.js";
@@ -17,24 +16,15 @@ function addDays(dateStr: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-export async function ensureTodayCheckinCycle(
+async function createCheckinThread(
   db: D1Database,
   guildId: string,
   botToken: string,
-  now = new Date()
+  parentChannelId: string,
+  localDate: string,
+  closesAt: string,
+  now: Date
 ): Promise<DailyCheckinCycleRow> {
-  const { settings } = await ensureV2GuildSetup(db, guildId, botToken);
-  const timezone = settings.timezone ?? DEFAULT_TIMEZONE;
-  const localDate = toLocalDateString(now, timezone);
-
-  const existing = await getDailyCheckinCycle(db, guildId, localDate);
-  if (existing) return existing;
-
-  const parentChannelId = settings.checkin_channel_id;
-  if (!parentChannelId) {
-    throw new Error("checkin channel is not configured");
-  }
-
   const title = localDate + " 인증";
   const opener = await createMessage(parentChannelId, botToken, {
     content: "새 인증 쓰레드를 생성했습니다: **" + title + "**",
@@ -45,26 +35,12 @@ export async function ensureTodayCheckinCycle(
     rate_limit_per_user: 0,
   });
 
-  const closeDate = addDays(localDate, 1);
-  const closesAt = closeDate + "T" + (settings.checkin_thread_close_time ?? "04:00") + ":00";
   const introCard = buildDailyCheckinThreadIntroCard({
     dateLabel: localDate,
     closeAtLabel: closesAt,
     submitButtonId: V2_BUTTON_IDS.CHECKIN_SUBMIT,
   });
-
   await sendChannelMessage(thread.id, botToken, undefined, introCard.components, MessageFlags.IS_COMPONENTS_V2);
-
-  // 인증 카드를 유저 프로필로 표시하기 위한 웹훅 생성
-  let webhookId: string | undefined;
-  let webhookToken: string | undefined;
-  try {
-    const webhook = await createWebhook(thread.id, botToken, "인증 카드");
-    webhookId = webhook.id;
-    webhookToken = webhook.token;
-  } catch (err) {
-    console.error("[checkin-cycle] 웹훅 생성 실패 (봇 메시지로 fallback):", err);
-  }
 
   return insertDailyCheckinCycle(db, {
     guildId,
@@ -73,9 +49,32 @@ export async function ensureTodayCheckinCycle(
     title,
     opensAt: now.toISOString(),
     closesAt,
-    webhookId,
-    webhookToken,
   });
+}
+
+export async function ensureTodayCheckinCycle(
+  db: D1Database,
+  guildId: string,
+  botToken: string,
+  now = new Date()
+): Promise<DailyCheckinCycleRow> {
+  const { settings } = await ensureV2GuildSetup(db, guildId, botToken);
+  const timezone = settings.timezone ?? DEFAULT_TIMEZONE;
+  const localDate = toLocalDateString(now, timezone);
+  const closeDate = addDays(localDate, 1);
+  const closesAt = closeDate + "T" + (settings.checkin_thread_close_time ?? "04:00") + ":00";
+
+  const parentChannelId = settings.checkin_channel_id;
+  if (!parentChannelId) throw new Error("checkin channel is not configured");
+
+  const existing = await getDailyCheckinCycle(db, guildId, localDate);
+  if (existing) {
+    const alive = await channelExists(existing.thread_id, botToken);
+    if (alive) return existing;
+    await db.prepare("DELETE FROM daily_checkin_cycles WHERE id = ?").bind(existing.id).run();
+  }
+
+  return createCheckinThread(db, guildId, botToken, parentChannelId, localDate, closesAt, now);
 }
 
 export async function closeExpiredCheckinCycles(
@@ -88,10 +87,7 @@ export async function closeExpiredCheckinCycles(
   for (const cycle of cycles) {
     await updateDailyCheckinCycleStatus(db, cycle.id, "closed");
     try {
-      await editChannel(cycle.thread_id, botToken, {
-        archived: true,
-        locked: true,
-      });
+      await editChannel(cycle.thread_id, botToken, { archived: true, locked: true });
     } catch (err) {
       console.error("Failed to archive thread " + cycle.thread_id + ":", err);
     }

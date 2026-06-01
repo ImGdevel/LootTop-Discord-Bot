@@ -162,3 +162,13 @@ export async function executeWebhook(
   }
   return res.json() as Promise<DiscordMessage>;
 }
+
+export async function channelExists(
+  channelId: string,
+  botToken: string
+): Promise<boolean> {
+  const res = await fetch("https://discord.com/api/v10/channels/" + channelId, {
+    headers: { Authorization: "Bot " + botToken },
+  });
+  return res.ok;
+}

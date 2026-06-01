@@ -27,8 +27,8 @@ export async function upsertGuildSettings(
            leaderboard_channel_id, plan_reminder_time, checkin_reminder_time,
            leaderboard_publish_time, study_home_channel_id, goal_forum_channel_id,
            leaderboard_forum_channel_id, goal_publish_time, checkin_thread_open_time,
-           checkin_thread_close_time, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           checkin_thread_close_time, checkin_webhook_id, checkin_webhook_token, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         guildId,
@@ -45,6 +45,8 @@ export async function upsertGuildSettings(
         fields.goal_publish_time ?? "18:00",
         fields.checkin_thread_open_time ?? "04:00",
         fields.checkin_thread_close_time ?? "04:00",
+        fields.checkin_webhook_id ?? null,
+        fields.checkin_webhook_token ?? null,
         now,
         now
       )
@@ -61,6 +63,7 @@ export async function upsertGuildSettings(
           study_home_channel_id = ?, goal_forum_channel_id = ?,
           leaderboard_forum_channel_id = ?,
           goal_publish_time = ?, checkin_thread_open_time = ?, checkin_thread_close_time = ?,
+          checkin_webhook_id = ?, checkin_webhook_token = ?,
           updated_at = ?
         WHERE guild_id = ?
       `)
@@ -78,6 +81,8 @@ export async function upsertGuildSettings(
         merged.goal_publish_time,
         merged.checkin_thread_open_time,
         merged.checkin_thread_close_time,
+        merged.checkin_webhook_id ?? null,
+        merged.checkin_webhook_token ?? null,
         now,
         guildId
       )

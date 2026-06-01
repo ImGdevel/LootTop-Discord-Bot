@@ -4,23 +4,15 @@ import { ensureCurrentWeeklyGoalCycle } from "../services/goal-cycle-v2.service.
 import { ensureWeeklyLeaderboardCycle } from "../services/leaderboard-cycle-v2.service.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export function handleRefreshCommand(
-  interaction: DiscordInteraction,
+// /관리자 갱신에서 직접 호출 가능한 핵심 로직
+export async function handleRefreshAsync(
+  guildId: string,
   env: Env,
-  ctx: ExecutionContext
-): Response {
-  ctx.waitUntil(handleRefreshAsync(interaction, env));
-  return deferredEphemeralResponse();
-}
-
-async function handleRefreshAsync(
-  interaction: DiscordInteraction,
-  env: Env
+  appId: string,
+  token: string
 ): Promise<void> {
-  const guildId = interaction.guild_id!;
   const results: string[] = [];
 
-  // 인증 스레드
   try {
     const cycle = await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
     results.push("✅ 인증 스레드: <#" + cycle.thread_id + ">");
@@ -28,7 +20,6 @@ async function handleRefreshAsync(
     results.push("⚠️ 인증 스레드: " + String(err));
   }
 
-  // 목표 포럼
   try {
     const goal = await ensureCurrentWeeklyGoalCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
     results.push("✅ 목표 포럼: <#" + goal.forum_thread_id + ">");
@@ -36,7 +27,6 @@ async function handleRefreshAsync(
     results.push("⚠️ 목표 포럼: " + String(err));
   }
 
-  // 리더보드
   try {
     const lb = await ensureWeeklyLeaderboardCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
     results.push("✅ 리더보드: <#" + lb.forum_thread_id + ">");
@@ -44,9 +34,7 @@ async function handleRefreshAsync(
     results.push("⚠️ 리더보드: " + String(err));
   }
 
-  await sendFollowup(
-    env.DISCORD_APPLICATION_ID,
-    interaction.token,
+  await sendFollowup(appId, token,
     "**갱신 결과**\n" + results.join("\n"),
     { ephemeral: true }
   );

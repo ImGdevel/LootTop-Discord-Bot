@@ -1,5 +1,5 @@
 import { getGuildSettings, upsertGuildSettings } from "../db/guild-settings.repository.js";
-import { createGuildChannel } from "../discord/rest.js";
+import { channelExists, createGuildChannel, createWebhook } from "../discord/rest.js";
 import type { GuildSettingsRow } from "../db/types.js";
 
 const CHANNEL_TYPES = {
@@ -10,6 +10,14 @@ const CHANNEL_TYPES = {
 export interface V2GuildSetupResult {
   settings: GuildSettingsRow;
   createdChannels: string[];
+}
+
+async function resolveChannelId(
+  id: string | null | undefined,
+  botToken: string
+): Promise<string | null> {
+  if (!id) return null;
+  return (await channelExists(id, botToken)) ? id : null;
 }
 
 export async function ensureV2GuildSetup(
@@ -29,6 +37,30 @@ export async function ensureV2GuildSetup(
     settings = await getGuildSettings(db, guildId);
   }
   if (!settings) throw new Error("ensureV2GuildSetup: guild_settings 생성 실패");
+
+  // 삭제된 채널 감지 → DB null 처리
+  const [homeId, goalId, checkinId, leaderboardId] = await Promise.all([
+    resolveChannelId(settings.study_home_channel_id, botToken),
+    resolveChannelId(settings.goal_forum_channel_id, botToken),
+    resolveChannelId(settings.checkin_channel_id, botToken),
+    resolveChannelId(settings.leaderboard_forum_channel_id, botToken),
+  ]);
+
+  const nullUpdates: Partial<Omit<GuildSettingsRow, "guild_id" | "created_at" | "updated_at">> = {};
+  if (homeId !== settings.study_home_channel_id) nullUpdates.study_home_channel_id = null as any;
+  if (goalId !== settings.goal_forum_channel_id) nullUpdates.goal_forum_channel_id = null as any;
+  if (checkinId !== settings.checkin_channel_id) {
+    nullUpdates.checkin_channel_id = null as any;
+    // 채널이 사라지면 webhook도 무효
+    nullUpdates.checkin_webhook_id = null as any;
+    nullUpdates.checkin_webhook_token = null as any;
+  }
+  if (leaderboardId !== settings.leaderboard_forum_channel_id) nullUpdates.leaderboard_forum_channel_id = null as any;
+
+  if (Object.keys(nullUpdates).length > 0) {
+    await upsertGuildSettings(db, guildId, nullUpdates);
+    settings = (await getGuildSettings(db, guildId))!;
+  }
 
   const createdChannels: string[] = [];
   const updates: Partial<Omit<GuildSettingsRow, "guild_id" | "created_at" | "updated_at">> = {};
@@ -61,6 +93,24 @@ export async function ensureV2GuildSetup(
     });
     updates.checkin_channel_id = ch.id;
     createdChannels.push("#" + ch.name);
+
+    // 인증 채널에 webhook 생성 (text channel이므로 webhook 지원)
+    try {
+      const wh = await createWebhook(ch.id, botToken, "인증 카드");
+      updates.checkin_webhook_id = wh.id;
+      updates.checkin_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 인증 webhook 생성 실패:", err);
+    }
+  } else if (!settings.checkin_webhook_id || !settings.checkin_webhook_token) {
+    // 채널은 있지만 webhook이 없는 경우 backfill
+    try {
+      const wh = await createWebhook(settings.checkin_channel_id, botToken, "인증 카드");
+      updates.checkin_webhook_id = wh.id;
+      updates.checkin_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 인증 webhook backfill 실패:", err);
+    }
   }
 
   if (!settings.leaderboard_forum_channel_id) {

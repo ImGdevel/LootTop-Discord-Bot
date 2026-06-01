@@ -13,6 +13,8 @@ export interface GuildSettingsRow {
   goal_publish_time: string;
   checkin_thread_open_time: string;
   checkin_thread_close_time: string;
+  checkin_webhook_id: string | null;
+  checkin_webhook_token: string | null;
   created_at: string;
   updated_at: string;
 }

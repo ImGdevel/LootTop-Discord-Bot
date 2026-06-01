@@ -1,4 +1,4 @@
-import { createForumThread } from "../discord/rest.js";
+import { channelExists, createForumThread } from "../discord/rest.js";
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import {
   getWeeklyLeaderboardCycle,
@@ -23,7 +23,11 @@ export async function ensureWeeklyLeaderboardCycle(
   const weekEndDate = getWeekEndDate(weekStartDate);
 
   const existing = await getWeeklyLeaderboardCycle(db, guildId, weekStartDate);
-  if (existing) return existing;
+  if (existing) {
+    const alive = await channelExists(existing.forum_thread_id, botToken);
+    if (alive) return existing;
+    await db.prepare("DELETE FROM weekly_leaderboard_cycles WHERE id = ?").bind(existing.id).run();
+  }
 
   const forumChannelId = settings?.leaderboard_forum_channel_id;
   if (!forumChannelId) throw new Error("leaderboard_forum_channel_id not configured");

@@ -1,6 +1,6 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getWeeklyGoalCycle, insertWeeklyGoalCycle } from "../db/weekly-goal-cycles.repository.js";
-import { createForumThread } from "../discord/rest.js";
+import { channelExists, createForumThread } from "../discord/rest.js";
 import { getWeekEndDate, getWeekStartDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
 import type { WeeklyGoalCycleRow } from "../db/types.js";
 
@@ -19,7 +19,11 @@ export async function ensureCurrentWeeklyGoalCycle(
   const weekEndDate = getWeekEndDate(weekStartDate);
 
   const existing = await getWeeklyGoalCycle(db, guildId, weekStartDate);
-  if (existing) return existing;
+  if (existing) {
+    const alive = await channelExists(existing.forum_thread_id, botToken);
+    if (alive) return existing;
+    await db.prepare("DELETE FROM weekly_goal_cycles WHERE id = ?").bind(existing.id).run();
+  }
 
   const forumChannelId = settings?.goal_forum_channel_id;
   if (!forumChannelId) throw new Error("goal_forum_channel_id not configured");

@@ -1,3 +1,3 @@
-import { handleSettings } from "./settings.handler.js";
+import { handleAdmin } from "./admin.handler.js";
 
-export { handleSettings };
+export { handleAdmin };

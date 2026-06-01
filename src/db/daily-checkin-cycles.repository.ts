@@ -78,3 +78,15 @@ export async function getOpenCheckinCyclesToClose(
     .all<DailyCheckinCycleRow>();
   return result.results;
 }
+
+export async function updateDailyCheckinCycleWebhook(
+  db: D1Database,
+  id: number,
+  webhookId: string,
+  webhookToken: string
+): Promise<void> {
+  await db
+    .prepare("UPDATE daily_checkin_cycles SET webhook_id = ?, webhook_token = ? WHERE id = ?")
+    .bind(webhookId, webhookToken, id)
+    .run();
+}
