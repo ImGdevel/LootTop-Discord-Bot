@@ -24,12 +24,12 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
     },
     {
       type: 18,
-      label: "🖼️ 인증 이미지 (선택, 최대 3장)",
+      label: "🖼️ 인증 이미지 (선택, 최대 5장)",
       component: {
         type: 19, // FILE_UPLOAD
         custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
         min_values: 0,
-        max_values: 3,
+        max_values: 5,
         required: false,
       },
     },
@@ -127,22 +127,30 @@ async function handleCheckinModalAsync(
     minute: "2-digit",
   });
 
+  const escapedContent = content.replace(/```/g, "\\`\\`\\`");
+  const metadataLine = "제출 시각: " + now + " | 작성자: <@" + user.id + ">";
+
   const cardComponents: unknown[] = [
-    { type: 10, content: "### " + now },
+    { type: 10, content: metadataLine },
     { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: content },
+    { type: 10, content: "**인증**\n```text\n" + escapedContent + "\n```" },
   ];
-  if (proofUrl) cardComponents.push({ type: 10, content: proofUrl });
+
   if (imageUrls.length > 0) {
+    cardComponents.push({ type: 14, divider: true, spacing: 1 });
+    cardComponents.push({ type: 10, content: "**이미지**" });
     cardComponents.push({
       type: 12,
       items: imageUrls.map((url) => ({ media: { url } })),
     });
   }
+  if (proofUrl) {
+    cardComponents.push({ type: 10, content: "**URL**\n" + proofUrl });
+  }
 
   const messageBody: Record<string, unknown> = {
     flags: MessageFlags.IS_COMPONENTS_V2,
-    components: [{ type: 17, accent_color: 0x57F287, components: cardComponents }],
+    components: [{ type: 17, accent_color: 0xFEE75C, components: cardComponents }],
   };
 
   try {
