@@ -4,6 +4,15 @@ export const COMMAND_DEFINITIONS = [
     description: "스터디 홈 카드를 확인합니다.",
   },
   {
+    name: "인증",
+    description: "오늘 인증을 제출합니다.",
+  },
+  {
+    name: "갱신",
+    description: "(관리자) 오늘 인증 스레드 등 미생성 항목을 즉시 생성합니다.",
+    default_member_permissions: "32",
+  },
+  {
     name: "설정",
     description: "(관리자) 서버 설정을 변경합니다.",
     default_member_permissions: "32",
@@ -68,6 +77,8 @@ export const COMMAND_DEFINITIONS = [
 export const COMMANDS = {
   HOME: "홈",
   SETTINGS: "설정",
+  CHECKIN: "인증",
+  REFRESH: "갱신",
 } as const;
 
 export const MODAL_IDS = {

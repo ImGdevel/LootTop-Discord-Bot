@@ -1,4 +1,5 @@
 import { handleSettings } from "../commands/handlers.js";
+import { handleRefreshCommand } from "./refresh.handler.js";
 import { handleGoalCommand } from "./plan.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
 import {
@@ -38,6 +39,10 @@ function routeCommand(
       return handleHomeCommand(interaction, env, ctx);
     case COMMANDS.SETTINGS:
       return handleSettings(interaction, env, ctx);
+    case COMMANDS.CHECKIN:
+      return handleCheckinCommand(interaction, env, ctx);
+    case COMMANDS.REFRESH:
+      return handleRefreshCommand(interaction, env, ctx);
     default:
       return null;
   }
