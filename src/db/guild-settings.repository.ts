@@ -53,6 +53,8 @@ export async function upsertGuildSettings(
         fields.vacation_channel_id ?? null,
         fields.vacation_webhook_id ?? null,
         fields.vacation_webhook_token ?? null,
+        fields.goal_webhook_id ?? null,
+        fields.goal_webhook_token ?? null,
         now,
         now
       )
@@ -72,6 +74,7 @@ export async function upsertGuildSettings(
           checkin_webhook_id = ?, checkin_webhook_token = ?,
           notification_channel_id = ?, vacation_channel_id = ?,
           vacation_webhook_id = ?, vacation_webhook_token = ?,
+          goal_webhook_id = ?, goal_webhook_token = ?,
           updated_at = ?
         WHERE guild_id = ?
       `)
@@ -95,6 +98,8 @@ export async function upsertGuildSettings(
         merged.vacation_channel_id ?? null,
         merged.vacation_webhook_id ?? null,
         merged.vacation_webhook_token ?? null,
+        merged.goal_webhook_id ?? null,
+        merged.goal_webhook_token ?? null,
         now,
         guildId
       )

@@ -91,6 +91,21 @@ export async function ensureV2GuildSetup(
     updates.goal_forum_channel_id = ch.id;
     updates.plan_reminder_channel_id = ch.id;
     createdChannels.push("#" + ch.name);
+    try {
+      const wh = await createWebhook(ch.id, botToken, "목표 카드");
+      updates.goal_webhook_id = wh.id;
+      updates.goal_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 목표 webhook 생성 실패:", err);
+    }
+  } else if (!settings.goal_webhook_id || !settings.goal_webhook_token) {
+    try {
+      const wh = await createWebhook(settings.goal_forum_channel_id, botToken, "목표 카드");
+      updates.goal_webhook_id = wh.id;
+      updates.goal_webhook_token = wh.token;
+    } catch (err) {
+      console.error("[guild-setup] 목표 webhook backfill 실패:", err);
+    }
   }
 
   if (!settings.checkin_channel_id) {

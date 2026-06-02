@@ -19,6 +19,8 @@ export interface GuildSettingsRow {
   vacation_channel_id: string | null;
   vacation_webhook_id: string | null;
   vacation_webhook_token: string | null;
+  goal_webhook_id: string | null;
+  goal_webhook_token: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,7 @@ export interface DailyCheckinEntryRow {
   entry_message_id: string | null;
   content: string | null;
   proof_url: string | null;
+  achievement_rate: number | null;
   submitted_at: string;
   status: "valid" | "late" | "discarded";
 }
@@ -116,6 +119,7 @@ export interface UserDailyGoalRow {
   weekly_goal_cycle_id: number;
   goal_message_id: string | null;
   rest_days_json: string;
+  goal_content: string | null;
   status: "active" | "archived";
   created_at: string;
   updated_at: string;

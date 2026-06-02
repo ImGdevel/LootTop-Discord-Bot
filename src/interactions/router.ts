@@ -1,8 +1,7 @@
 import { handleAdmin } from "../commands/handlers.js";
-import { handleVacationCommand, handleVacationModal, VACATION_MODAL_CUSTOM_ID } from "./vacation.handler.js";
-import { handleGoalCommand } from "./plan.handler.js";
+import { handleVacationCommand, handleVacationButton, handleVacationModal, VACATION_MODAL_ID, VACATION_BUTTON_ID } from "./vacation.handler.js";
+import { handleGoalCommand, handleGoalButton, handleGoalModal, GOAL_MODAL_ID, GOAL_SUBMIT_BUTTON_ID } from "./goal.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
-import { VACATION_SUBMIT_BUTTON_ID } from "../services/vacation-cycle.service.js";
 import {
   handleCheckinButton,
   handleCheckinModal,
@@ -44,6 +43,8 @@ function routeCommand(
       return handleCheckinCommand(interaction, env, ctx);
     case COMMANDS.VACATION:
       return handleVacationCommand(interaction);
+    case COMMANDS.GOAL:
+      return handleGoalCommand(interaction);
     default:
       return null;
   }
@@ -65,13 +66,12 @@ function routeComponent(
   if (id.startsWith("home:refresh")) {
     return handleHomeCommand(interaction, env, ctx);
   }
-  if (id.startsWith("home:goal") || id.startsWith("goal:")) {
-    return handleGoalCommand(interaction, env, ctx);
+  if (id.startsWith(VACATION_BUTTON_ID)) {
+    return handleVacationButton(interaction);
   }
-  if (id === VACATION_SUBMIT_BUTTON_ID) {
-    return handleVacationCommand(interaction);
+  if (id.startsWith(GOAL_SUBMIT_BUTTON_ID)) {
+    return handleGoalButton(interaction);
   }
-
   return null;
 }
 
@@ -83,8 +83,11 @@ function routeModal(
   if (interaction.data?.custom_id === MODAL_IDS.CHECKIN) {
     return handleCheckinModal(interaction, env, ctx);
   }
-  if (interaction.data?.custom_id === VACATION_MODAL_CUSTOM_ID) {
+  if (interaction.data?.custom_id === VACATION_MODAL_ID) {
     return handleVacationModal(interaction, env, ctx);
+  }
+  if (interaction.data?.custom_id === GOAL_MODAL_ID) {
+    return handleGoalModal(interaction, env, ctx);
   }
   return null;
 }

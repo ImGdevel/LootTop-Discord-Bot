@@ -3,23 +3,22 @@ import { submitVacation } from "../services/vacation.service.js";
 import { upsertUser } from "../db/users.repository.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-const VACATION_MODAL_ID = "modal_vacation";
+export const VACATION_MODAL_ID = "modal_vacation";
+export const VACATION_BUTTON_ID = "vacation:submit";
+
 const VACATION_FIELDS = {
   DATES: "vacation_dates",
   REASON: "vacation_reason",
 };
 
-// /휴가 → 모달 (날짜 선택 + 사유)
-export function handleVacationCommand(_interaction: DiscordInteraction): Response {
-  // 오늘 이후 14일 옵션 동적 생성
+function buildVacationModal(): Response {
   const options = buildDateOptions(14);
-
   return rawModalResponse(VACATION_MODAL_ID, "휴가 신청", [
     {
       type: 18,
       label: "휴가 날짜 (내일 이후, 최대 7일)",
       component: {
-        type: 3, // STRING_SELECT
+        type: 3,
         custom_id: VACATION_FIELDS.DATES,
         placeholder: "날짜를 선택하세요",
         min_values: 1,
@@ -32,7 +31,7 @@ export function handleVacationCommand(_interaction: DiscordInteraction): Respons
       type: 18,
       label: "사유 (선택)",
       component: {
-        type: 4, // TEXT_INPUT
+        type: 4,
         custom_id: VACATION_FIELDS.REASON,
         style: 1,
         placeholder: "여행, 개인 사정 등",
@@ -45,15 +44,24 @@ export function handleVacationCommand(_interaction: DiscordInteraction): Respons
 function buildDateOptions(days: number): Array<{ label: string; value: string }> {
   const options = [];
   const now = new Date();
-  // 내일부터 시작
   for (let i = 1; i <= days; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
-    const value = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    const value = d.toISOString().slice(0, 10);
     const label = value + " (" + ["일", "월", "화", "수", "목", "금", "토"][d.getDay()] + ")";
     options.push({ label, value });
   }
   return options;
+}
+
+// /휴가 슬래시 커맨드
+export function handleVacationCommand(_interaction: DiscordInteraction): Response {
+  return buildVacationModal();
+}
+
+// 스레드 내 "휴가 신청" 버튼
+export function handleVacationButton(_interaction: DiscordInteraction): Response {
+  return buildVacationModal();
 }
 
 // 모달 제출
@@ -76,7 +84,6 @@ async function handleVacationModalAsync(
 
   const rows = interaction.data?.components ?? [];
 
-  // Label 기반 파싱
   const getValues = (id: string): string[] => {
     for (const row of rows) {
       if (row.type === 18 && row.component?.custom_id === id)
@@ -94,7 +101,6 @@ async function handleVacationModalAsync(
 
   const vacationDates = getValues(VACATION_FIELDS.DATES);
   const reason = getText(VACATION_FIELDS.REASON) || null;
-
   if (vacationDates.length === 0) return;
 
   const displayName = user.global_name ?? user.username;
@@ -121,5 +127,3 @@ async function handleVacationModalAsync(
     { ephemeral: true }
   );
 }
-
-export const VACATION_MODAL_CUSTOM_ID = VACATION_MODAL_ID;

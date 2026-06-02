@@ -12,6 +12,10 @@ export const COMMAND_DEFINITIONS = [
     description: "휴가를 신청합니다.",
   },
   {
+    name: "목표",
+    description: "이번 주 목표를 작성합니다.",
+  },
+  {
     name: "관리자",
     description: "관리자 전용 기능입니다.",
     default_member_permissions: "32",
@@ -102,11 +106,13 @@ export const COMMANDS = {
   CHECKIN: "인증",
   ADMIN: "관리자",
   VACATION: "휴가",
+  GOAL: "목표",
 } as const;
 
 export const MODAL_IDS = {
   CHECKIN: "modal_checkin_simple",
   VACATION: "modal_vacation",
+  GOAL: "modal_goal_simple",
 } as const;
 
 export const MODAL_FIELDS = {
@@ -114,6 +120,7 @@ export const MODAL_FIELDS = {
     CONTENT: "checkin_content",
     PROOF_URL: "checkin_proof_url",
     PROOF_IMAGE: "checkin_proof_image",
+    ACHIEVEMENT_RATE: "checkin_achievement_rate",
   },
 } as const;
 

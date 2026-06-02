@@ -2,6 +2,7 @@ import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getWeeklyGoalCycle, insertWeeklyGoalCycle } from "../db/weekly-goal-cycles.repository.js";
 import { channelExists, createForumThread } from "../discord/rest.js";
 import { getWeekEndDate, getWeekStartDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
+import { MessageFlags } from "../types.js";
 import type { WeeklyGoalCycleRow } from "../db/types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -38,7 +39,23 @@ export async function ensureCurrentWeeklyGoalCycle(
   const thread = await createForumThread(forumChannelId, botToken, {
     name: title,
     auto_archive_duration: 10080,
-    message: { content },
+    message: {
+      flags: MessageFlags.IS_COMPONENTS_V2,
+      components: [
+        {
+          type: 17,
+          accent_color: 0x9B59B6,
+          components: [
+            { type: 10, content: "## 🎯 " + title },
+            { type: 14, divider: true, spacing: 1 },
+            { type: 10, content: content },
+            { type: 1, components: [
+              { type: 2, style: 1, label: "목표 작성", custom_id: "goal:submit" },
+            ]},
+          ],
+        },
+      ],
+    },
   });
 
   return insertWeeklyGoalCycle(db, {

@@ -5,6 +5,7 @@ import { ensureCurrentWeeklyGoalCycle } from "../services/goal-cycle-v2.service.
 import { ensureWeeklyLeaderboardCycle } from "../services/leaderboard-cycle-v2.service.js";
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { handleRefreshAsync } from "../interactions/refresh.handler.js";
+import { ensureCurrentVacationCycle } from "../services/vacation-cycle.service.js";
 import { forbiddenResponse, hasManageGuild, processSettingsOptions } from "./settings.handler.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -92,6 +93,13 @@ async function runInitialize(
     cycleResults.push("✅ 리더보드: <#" + lb.forum_thread_id + ">");
   } catch (err) {
     cycleResults.push("⚠️ 리더보드: " + String(err));
+  }
+
+  try {
+    const vc = await ensureCurrentVacationCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN);
+    cycleResults.push("✅ 휴가 스레드: <#" + vc.thread_id + ">");
+  } catch (err) {
+    cycleResults.push("⚠️ 휴가 스레드: " + String(err));
   }
 
   await sendFollowup(appId, token,
