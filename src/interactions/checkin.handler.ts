@@ -34,6 +34,17 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
     },
     {
       type: 18,
+      label: "오늘 목표 달성률 (선택, 0~100)",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE,
+        style: 1,
+        placeholder: "예: 80",
+        required: false,
+      },
+    },
+    {
+      type: 18,
       label: "인증 이미지 (선택, 최대 3장)",
       component: {
         type: 19,
@@ -85,6 +96,8 @@ async function handleCheckinModalAsync(
 
   const content = getText(MODAL_FIELDS.CHECKIN.CONTENT);
   const proofUrl = getText(MODAL_FIELDS.CHECKIN.PROOF_URL) || null;
+  const rateRaw = getText(MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE);
+  const achievementRate = rateRaw ? Math.min(100, Math.max(0, parseInt(rateRaw, 10) || 0)) : null;
   const imageIds = getFileIds(MODAL_FIELDS.CHECKIN.PROOF_IMAGE);
 
   const resolvedAttachments = interaction.data?.resolved?.attachments ?? {};
@@ -116,6 +129,7 @@ async function handleCheckinModalAsync(
     dailyCheckinCycleId: cycle.id,
     content,
     proofUrl,
+    achievementRate,
   });
 
   const now = new Date().toLocaleString("ko-KR", {
@@ -129,6 +143,7 @@ async function handleCheckinModalAsync(
     { type: 14, divider: true, spacing: 1 },
     { type: 10, content: content },
   ];
+  if (achievementRate !== null) cardComponents.push({ type: 10, content: "**달성률:** " + achievementRate + "%" });
   if (proofUrl) cardComponents.push({ type: 10, content: proofUrl });
   if (imageUrls.length > 0) {
     cardComponents.push({

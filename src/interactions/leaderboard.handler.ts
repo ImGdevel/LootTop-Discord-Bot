@@ -1,5 +1,5 @@
-import { deferredResponse, sendFollowup } from "../discord/response.js";
-import { buildLeaderboardFlow } from "../flows/leaderboard.flow.js";
+import { deferredEphemeralResponse, sendFollowup } from "../discord/response.js";
+import { buildLeaderboardComponents } from "../flows/leaderboard.flow.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
 export function handleLeaderboardCommand(
@@ -8,7 +8,7 @@ export function handleLeaderboardCommand(
   ctx: ExecutionContext
 ): Response {
   ctx.waitUntil(handleLeaderboardAsync(interaction, env));
-  return deferredResponse();
+  return deferredEphemeralResponse();
 }
 
 async function handleLeaderboardAsync(
@@ -17,8 +17,9 @@ async function handleLeaderboardAsync(
 ): Promise<void> {
   const guildId = interaction.guild_id;
   if (!guildId) return;
-  const payload = await buildLeaderboardFlow(env.DB, guildId);
-  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, payload.content, {
-    flags: payload.flags,
+  const { flags, components } = await buildLeaderboardComponents(env.DB, guildId);
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token, undefined, {
+    flags,
+    components,
   });
 }

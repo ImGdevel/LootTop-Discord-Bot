@@ -78,12 +78,12 @@ export async function getValidEntryItemCountsByGoalIds(db: D1Database, dailyChec
 // 단순 인증 저장 (content/proof_url 직접)
 export async function insertSimpleCheckin(
   db: D1Database,
-  input: { guildId: string; discordUserId: string; dailyCheckinCycleId: number; content: string; proofUrl: string | null }
+  input: { guildId: string; discordUserId: string; dailyCheckinCycleId: number; content: string; proofUrl: string | null; achievementRate?: number | null }
 ): Promise<DailyCheckinEntryRow> {
   const now = new Date().toISOString();
   await db
-    .prepare("INSERT INTO daily_checkin_entries (guild_id, discord_user_id, daily_checkin_cycle_id, content, proof_url, submitted_at, status) VALUES (?, ?, ?, ?, ?, ?, 'valid')")
-    .bind(input.guildId, input.discordUserId, input.dailyCheckinCycleId, input.content, input.proofUrl, now)
+    .prepare("INSERT INTO daily_checkin_entries (guild_id, discord_user_id, daily_checkin_cycle_id, content, proof_url, achievement_rate, submitted_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'valid')")
+    .bind(input.guildId, input.discordUserId, input.dailyCheckinCycleId, input.content, input.proofUrl, input.achievementRate ?? null, now)
     .run();
   const row = await db
     .prepare("SELECT * FROM daily_checkin_entries WHERE guild_id = ? AND discord_user_id = ? AND daily_checkin_cycle_id = ? ORDER BY id DESC LIMIT 1")

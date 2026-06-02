@@ -34,12 +34,12 @@ export async function ensureWeeklyLeaderboardCycle(
 
   const weekLabel = formatWeekLabel(weekStartDate);
   const title = weekLabel + " 리더보드";
-  const content = await buildPublicLeaderboard(db, guildId);
+  const { flags, components } = await buildPublicLeaderboard(db, guildId);
 
   const thread = await createForumThread(forumChannelId, botToken, {
     name: title,
     auto_archive_duration: 10080,
-    message: { content },
+    message: { flags, components },
   });
 
   return insertWeeklyLeaderboardCycle(db, {
