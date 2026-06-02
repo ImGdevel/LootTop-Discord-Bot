@@ -9,49 +9,57 @@ import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
 export function handleCheckinButton(_interaction: DiscordInteraction): Response {
-  return rawModalResponse(MODAL_IDS.CHECKIN, "오늘 인증", [
+  return rawModalResponse(MODAL_IDS.CHECKIN, "✅ 오늘 인증", [
     {
       type: 18,
-      label: "오늘 한 일",
+      label: "📝 오늘 한 일",
+      description: "오늘 공부하거나 수행한 내용을 자유롭게 적어주세요.",
       component: {
         type: 4,
         custom_id: MODAL_FIELDS.CHECKIN.CONTENT,
         style: 2,
-        placeholder: "오늘 공부하거나 수행한 내용을 자유롭게 적어주세요.",
+        placeholder: "예: 알고리즘 2문제 풀었고, 리액트 훅 개념 정리했습니다.",
+        min_length: 5,
         required: true,
       },
     },
     {
       type: 18,
-      label: "링크 또는 메모 (선택)",
-      component: {
-        type: 4,
-        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
-        style: 1,
-        placeholder: "https://... 또는 참고 메모",
-        required: false,
-      },
-    },
-    {
-      type: 18,
-      label: "오늘 목표 달성률 (선택, 0~100)",
-      component: {
-        type: 4,
-        custom_id: MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE,
-        style: 1,
-        placeholder: "예: 80",
-        required: false,
-      },
-    },
-    {
-      type: 18,
-      label: "인증 이미지 (선택, 최대 3장)",
+      label: "🖼️ 인증 이미지 (선택, 최대 3장)",
+      description: "스크린샷, 사진 등 인증 자료를 첨부하세요.",
       component: {
         type: 19,
         custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
         min_values: 0,
         max_values: 3,
         required: false,
+      },
+    },
+    {
+      type: 18,
+      label: "🔗 인증 URL (선택)",
+      description: "깃헙 커밋, 블로그 포스트 등 링크를 첨부하세요.",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
+        style: 1,
+        placeholder: "https://...",
+        required: false,
+      },
+    },
+    {
+      type: 18,
+      label: "📊 오늘 목표 달성률 (0~100)",
+      description: "오늘 하루 목표를 얼마나 달성했나요?",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE,
+        style: 1,
+        placeholder: "0~100 사이 숫자를 입력하세요",
+        value: "100",
+        min_length: 1,
+        max_length: 3,
+        required: true,
       },
     },
   ]);
@@ -97,7 +105,15 @@ async function handleCheckinModalAsync(
   const content = getText(MODAL_FIELDS.CHECKIN.CONTENT);
   const proofUrl = getText(MODAL_FIELDS.CHECKIN.PROOF_URL) || null;
   const rateRaw = getText(MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE);
-  const achievementRate = rateRaw ? Math.min(100, Math.max(0, parseInt(rateRaw, 10) || 0)) : null;
+  const rateParsed = rateRaw ? parseInt(rateRaw.trim(), 10) : null;
+  const achievementRate = (rateParsed !== null && !isNaN(rateParsed))
+    ? Math.min(100, Math.max(0, rateParsed))
+    : null;
+  if (rateRaw && (isNaN(rateParsed!) || rateParsed! < 0 || rateParsed! > 100)) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 달성률은 0~100 사이 숫자만 입력 가능합니다.", { ephemeral: true });
+    return;
+  }
   const imageIds = getFileIds(MODAL_FIELDS.CHECKIN.PROOF_IMAGE);
 
   const resolvedAttachments = interaction.data?.resolved?.attachments ?? {};
