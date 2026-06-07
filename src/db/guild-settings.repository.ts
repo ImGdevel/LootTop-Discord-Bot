@@ -29,8 +29,9 @@ export async function upsertGuildSettings(
            leaderboard_forum_channel_id, goal_publish_time, checkin_thread_open_time,
            checkin_thread_close_time, checkin_webhook_id, checkin_webhook_token,
            notification_channel_id, vacation_channel_id, vacation_webhook_id, vacation_webhook_token,
+           goal_webhook_id, goal_webhook_token,
            created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         guildId,
