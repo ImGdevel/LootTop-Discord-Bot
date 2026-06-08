@@ -4,7 +4,7 @@ import { sendChannelMessage } from "../discord/response.js";
 import { buildDailyCheckinThreadIntroCard } from "../ui/cards/daily-checkin-thread.card.js";
 import { V2_BUTTON_IDS } from "../ui/builders/ids.js";
 import { MessageFlags } from "../types.js";
-import { toLocalDateString } from "../domain/date.js";
+import { getCheckinOperationalDateString } from "../domain/date.js";
 import { ensureV2GuildSetup } from "./guild-setup-v2.service.js";
 import type { DailyCheckinCycleRow } from "../db/types.js";
 
@@ -60,7 +60,11 @@ export async function ensureTodayCheckinCycle(
 ): Promise<DailyCheckinCycleRow> {
   const { settings } = await ensureV2GuildSetup(db, guildId, botToken);
   const timezone = settings.timezone ?? DEFAULT_TIMEZONE;
-  const localDate = toLocalDateString(now, timezone);
+  const localDate = getCheckinOperationalDateString(
+    now,
+    timezone,
+    settings.checkin_thread_close_time ?? "04:00"
+  );
   const closeDate = addDays(localDate, 1);
   const closesAt = closeDate + "T" + (settings.checkin_thread_close_time ?? "04:00") + ":00";
 

@@ -4,6 +4,7 @@ const handlerMocks = vi.hoisted(() => ({
   handleSettings: vi.fn(),
   handleRefreshCommand: vi.fn(),
   handleGoalCommand: vi.fn(),
+  handleGoalButton: vi.fn(),
   handleHomeCommand: vi.fn(),
   handleCheckinButton: vi.fn(),
   handleCheckinModal: vi.fn(),
@@ -21,6 +22,11 @@ vi.mock("../../src/interactions/refresh.handler.js", () => ({
 
 vi.mock("../../src/interactions/plan.handler.js", () => ({
   handleGoalCommand: handlerMocks.handleGoalCommand,
+}));
+
+vi.mock("../../src/interactions/goal.handler.js", () => ({
+  GOAL_SUBMIT_BUTTON_ID: "goal:submit",
+  handleGoalButton: handlerMocks.handleGoalButton,
 }));
 
 vi.mock("../../src/interactions/home.handler.js", () => ({
@@ -41,6 +47,7 @@ import { routeInteraction } from "../../src/interactions/router.js";
 import { COMMANDS, MODAL_IDS } from "../../src/commands/definitions.js";
 import { InteractionType } from "../../src/types.js";
 import type { DiscordInteraction, Env } from "../../src/types.js";
+import { GOAL_SUBMIT_BUTTON_ID } from "../../src/interactions/goal.handler.js";
 
 describe("routeInteraction", () => {
   const env = {} as Env;
@@ -80,12 +87,12 @@ describe("routeInteraction", () => {
   });
 
   it("routes goal component ids to the goal handler", () => {
-    const interaction = createComponentInteraction("goal:create:self:current:1");
+    const interaction = createComponentInteraction(GOAL_SUBMIT_BUTTON_ID);
 
     const actual = routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
-    expect(handlerMocks.handleGoalCommand).toHaveBeenCalledWith(interaction, env, ctx);
+    expect(handlerMocks.handleGoalButton).toHaveBeenCalledWith(interaction);
   });
 
   it("routes checkin modal submissions to the modal handler", () => {

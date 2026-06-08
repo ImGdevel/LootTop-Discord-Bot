@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getCheckinOperationalDateString,
   formatWeekLabel,
   getWeekEndDate,
   getWeekStartDate,
@@ -34,5 +35,13 @@ describe("date domain helpers", () => {
 
     expect(isScheduledTime(nowUtc, "17:00", "Asia/Seoul")).toBe(true);
     expect(isScheduledTime(nowUtc, "16:54", "Asia/Seoul")).toBe(false);
+  });
+
+  it("maps checkin submissions before the cutoff to the previous operational day", () => {
+    const beforeCutoff = new Date("2026-06-08T15:01:00.000Z"); // 2026-06-09 00:01 KST
+    const afterCutoff = new Date("2026-06-09T00:30:00.000Z"); // 2026-06-09 09:30 KST
+
+    expect(getCheckinOperationalDateString(beforeCutoff, "Asia/Seoul", "04:00")).toBe("2026-06-08");
+    expect(getCheckinOperationalDateString(afterCutoff, "Asia/Seoul", "04:00")).toBe("2026-06-09");
   });
 });
