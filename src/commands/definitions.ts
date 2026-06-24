@@ -16,6 +16,14 @@ export const COMMAND_DEFINITIONS = [
     description: "이번 주 목표를 작성합니다.",
   },
   {
+    name: "리더보드",
+    description: "이번 주 달성률 리더보드를 확인합니다.",
+  },
+  {
+    name: "서버정보",
+    description: "현재 배포 버전과 상태를 확인합니다.",
+  },
+  {
     name: "관리자",
     description: "관리자 전용 기능입니다.",
     default_member_permissions: "32",
@@ -104,6 +112,8 @@ export const COMMAND_DEFINITIONS = [
 export const COMMANDS = {
   HOME: "홈",
   CHECKIN: "인증",
+  LEADERBOARD: "리더보드",
+  VERSION: "서버정보",
   ADMIN: "관리자",
   VACATION: "휴가",
   GOAL: "목표",

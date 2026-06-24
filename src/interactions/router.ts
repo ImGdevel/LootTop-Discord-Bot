@@ -8,6 +8,7 @@ import {
   handleCheckinCommand,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
+import { handleVersionCommand } from "./version.handler.js";
 import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
@@ -45,6 +46,10 @@ function routeCommand(
       return handleVacationCommand(interaction);
     case COMMANDS.GOAL:
       return handleGoalCommand(interaction);
+    case COMMANDS.LEADERBOARD:
+      return handleLeaderboardCommand(interaction, env, ctx);
+    case COMMANDS.VERSION:
+      return handleVersionCommand(interaction, env);
     default:
       return null;
   }
