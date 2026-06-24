@@ -5,7 +5,8 @@ import {
   insertWeeklyLeaderboardCycle,
 } from "../db/weekly-leaderboard-cycles.repository.js";
 import { buildPublicLeaderboard } from "../flows/leaderboard.flow.js";
-import { getOperationalWeekStartDate, getWeekEndDate, formatWeekLabel } from "../domain/date.js";
+import { getOperationalWeekStartDate, getWeekEndDate, weekLabel } from "../domain/date.js";
+import { getLatestWeeklyGoalCycleWeekNumber } from "../db/weekly-goal-cycles.repository.js";
 import type { WeeklyLeaderboardCycleRow } from "../db/types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -36,8 +37,9 @@ export async function ensureWeeklyLeaderboardCycle(
   const forumChannelId = settings?.leaderboard_forum_channel_id;
   if (!forumChannelId) throw new Error("leaderboard_forum_channel_id not configured");
 
-  const weekLabel = formatWeekLabel(weekStartDate);
-  const title = weekLabel + " 리더보드";
+  const weekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
+  const label = weekLabel(weekNum, weekStartDate);
+  const title = label + " 리더보드";
   const { flags, components } = await buildPublicLeaderboard(db, guildId);
 
   const thread = await createForumThread(forumChannelId, botToken, {

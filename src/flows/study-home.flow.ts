@@ -1,10 +1,11 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getLatestWeeklyGoalCycle } from "../db/weekly-goal-cycles.repository.js";
+
 import { getDailyCheckinCycle } from "../db/daily-checkin-cycles.repository.js";
 import { getWeeklyLeaderboardCycle } from "../db/weekly-leaderboard-cycles.repository.js";
 import { getWeeklyCheckinCounts } from "../db/daily-checkin-entries.repository.js";
 import { MessageFlags } from "../types.js";
-import { toLocalDateString, getWeekStartDate, getWeekEndDate } from "../domain/date.js";
+import { toLocalDateString, getWeekStartDate, getWeekEndDate, weekLabel } from "../domain/date.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
 
@@ -30,9 +31,10 @@ export async function buildStudyHomeFlow(
   const myCount = counts.find((r) => r.discord_user_id === discordUserId)?.count ?? 0;
   const checkinOpen = checkinCycle?.status === "open";
 
+  const wLabel = weekLabel(goalCycle?.week_number ?? null, weekStartDate);
   const lines = [
     "## 📚 스터디 홈",
-    "이번 주: **" + weekStartDate + " ~ " + weekEndDate + "**",
+    "**" + wLabel + "** (" + weekStartDate + " ~ " + weekEndDate + ")",
     "",
     goalCycle ? "📋 [목표 스레드](<https://discord.com/channels/" + guildId + "/" + goalCycle.forum_thread_id + ">)" : "📋 목표 스레드: 준비 중",
     checkinCycle ? "✅ [오늘 인증 스레드](<https://discord.com/channels/" + guildId + "/" + checkinCycle.thread_id + ">)" : "✅ 오늘 인증 스레드: 준비 중",

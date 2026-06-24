@@ -1,7 +1,8 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getWeeklyVacationCycle, insertWeeklyVacationCycle } from "../db/vacation-cycle.repository.js";
 import { createMessage, getChannel, startThreadFromMessage } from "../discord/rest.js";
-import { toLocalDateString, getWeekStartDate, formatWeekLabel } from "../domain/date.js";
+import { toLocalDateString, getWeekStartDate, weekLabel } from "../domain/date.js";
+import { getLatestWeeklyGoalCycleWeekNumber } from "../db/weekly-goal-cycles.repository.js";
 import { MessageFlags } from "../types.js";
 import type { WeeklyVacationCycleRow } from "../db/types.js";
 
@@ -18,7 +19,8 @@ export async function ensureCurrentVacationCycle(
   const tz = settings?.timezone ?? DEFAULT_TIMEZONE;
   const localDate = toLocalDateString(now, tz);
   const weekStart = getWeekStartDate(localDate);
-  const weekLabel = formatWeekLabel(weekStart);
+  const weekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
+  const label = weekLabel(weekNum, weekStart);
 
   const existing = await getWeeklyVacationCycle(db, guildId, weekStart);
   if (existing) {
@@ -36,7 +38,7 @@ export async function ensureCurrentVacationCycle(
   const channelId = settings?.vacation_channel_id;
   if (!channelId) throw new Error("vacation_channel_id not configured");
 
-  const title = weekLabel + " 휴가";
+  const title = label + " 휴가";
   const opener = await createMessage(channelId, botToken, {
     flags: MessageFlags.IS_COMPONENTS_V2,
     components: [

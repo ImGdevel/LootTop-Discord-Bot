@@ -21,8 +21,13 @@ export interface GuildSettingsRow {
   vacation_webhook_token: string | null;
   goal_webhook_id: string | null;
   goal_webhook_token: string | null;
-  week_start_day: number;   // 0=일, 1=월(기본), ..., 6=토
-  week_start_time: string;  // HH:MM (기본 '00:00')
+  week_start_day: number;         // 0=일, 1=월(기본), ..., 6=토
+  week_start_time: string;        // HH:MM (기본 '00:00')
+  week_number_start: number;      // 첫 사이클에 부여할 주차 번호 (기본 1)
+  leaderboard_publish_day: number | null; // null이면 week_start_day 사용
+  goal_publish_day: number | null;
+  checkin_thread_open_day: number | null;
+  checkin_thread_close_day: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -48,6 +53,7 @@ export interface WeeklyGoalCycleRow {
   status: "open" | "closed" | "archived";
   published_at: string;
   created_at: string;
+  week_number: number | null;
 }
 
 export interface DailyCheckinCycleRow {

@@ -1,7 +1,12 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
-import { getWeeklyGoalCycle, insertWeeklyGoalCycle } from "../db/weekly-goal-cycles.repository.js";
+import {
+  getWeeklyGoalCycle,
+  insertWeeklyGoalCycle,
+  getLatestWeeklyGoalCycle,
+  getLatestWeeklyGoalCycleWeekNumber,
+} from "../db/weekly-goal-cycles.repository.js";
 import { channelExists, createForumThread } from "../discord/rest.js";
-import { getWeekEndDate, getWeekStartDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
+import { getWeekEndDate, getWeekStartDate, toLocalDateString, weekLabel } from "../domain/date.js";
 import { MessageFlags } from "../types.js";
 import type { WeeklyGoalCycleRow } from "../db/types.js";
 
@@ -29,10 +34,17 @@ export async function ensureCurrentWeeklyGoalCycle(
   const forumChannelId = settings?.goal_forum_channel_id;
   if (!forumChannelId) throw new Error("goal_forum_channel_id not configured");
 
-  const weekLabel = formatWeekLabel(weekStartDate);
-  const title = weekLabel + " 목표";
+  const latestWeekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
+  const latestCycle = await getLatestWeeklyGoalCycle(db, guildId);
+  const weekNumber =
+    latestWeekNum != null && latestCycle?.week_start_date !== weekStartDate
+      ? latestWeekNum + 1
+      : latestWeekNum ?? (settings?.week_number_start ?? 1);
+
+  const label = weekLabel(weekNumber, weekStartDate);
+  const title = label + " 목표";
   const content =
-    "**" + weekLabel + "** (" + weekStartDate + " ~ " + weekEndDate + ")\n\n" +
+    "**" + label + "** (" + weekStartDate + " ~ " + weekEndDate + ")\n\n" +
     "이번 주 목표를 이 스레드에 자유롭게 작성해 주세요!\n" +
     "인증은 #인증 채널에서 매일 진행됩니다.";
 
@@ -46,7 +58,7 @@ export async function ensureCurrentWeeklyGoalCycle(
           type: 17,
           accent_color: 0x9B59B6,
           components: [
-            { type: 10, content: "## 🎯 " + title },
+            { type: 10, content: "## 🎯 " + label + " 목표" },
             { type: 14, divider: true, spacing: 1 },
             { type: 10, content: content },
             { type: 1, components: [
@@ -65,5 +77,6 @@ export async function ensureCurrentWeeklyGoalCycle(
     forumThreadId: thread.id,
     title,
     publishedAt: now.toISOString(),
+    weekNumber,
   });
 }

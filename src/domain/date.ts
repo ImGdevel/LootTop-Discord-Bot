@@ -71,12 +71,22 @@ export function getWeekEndDate(weekStartDate: string): string {
   return formatDateParts(sunday);
 }
 
-// "2026-06-01" -> "6월 1주차"
+// "2026-06-01" -> "6월 1주차" (레거시 표기)
 export function formatWeekLabel(weekStartDate: string): string {
   const date = new Date(weekStartDate + "T00:00:00");
   const month = date.getMonth() + 1;
   const weekNum = Math.ceil(date.getDate() / 7);
   return month + "월 " + weekNum + "주차";
+}
+
+// N -> "N주차"
+export function formatWeekNumber(n: number): string {
+  return n + "주차";
+}
+
+// 사이클의 week_number가 있으면 "N주차", 없으면 레거시 날짜 표기
+export function weekLabel(weekNumber: number | null, weekStartDate: string): string {
+  return weekNumber != null ? formatWeekNumber(weekNumber) : formatWeekLabel(weekStartDate);
 }
 
 export function isScheduledTime(

@@ -7,22 +7,60 @@ import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { handleRefreshAsync } from "../interactions/refresh.handler.js";
 import { ensureCurrentVacationCycle } from "../services/vacation-cycle.service.js";
 import { forbiddenResponse, hasManageGuild, processSettingsOptions } from "./settings.handler.js";
+import { getLatestWeeklyGoalCycle, updateWeeklyGoalCycleWeekNumber } from "../db/weekly-goal-cycles.repository.js";
+import { upsertGuildSettings } from "../db/guild-settings.repository.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export function handleAdmin(
+export function handleSettings(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
 ): Response {
   if (!hasManageGuild(interaction)) return forbiddenResponse();
-  ctx.waitUntil(processAdmin(interaction, env));
+  ctx.waitUntil(runSettings(interaction, env));
   return deferredEphemeralResponse();
 }
 
-async function processAdmin(
+export function handleRefresh(
   interaction: DiscordInteraction,
-  env: Env
-): Promise<void> {
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  if (!hasManageGuild(interaction)) return forbiddenResponse();
+  ctx.waitUntil(
+    handleRefreshAsync(interaction.guild_id!, env, env.DISCORD_APPLICATION_ID, interaction.token)
+      .catch((err) => console.error("[handleRefresh] error:", err))
+  );
+  return deferredEphemeralResponse();
+}
+
+export function handleInit(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  if (!hasManageGuild(interaction)) return forbiddenResponse();
+  ctx.waitUntil(
+    runInitialize(env, interaction.guild_id!, env.DISCORD_APPLICATION_ID, interaction.token)
+      .catch((err) => console.error("[handleInit] error:", err))
+  );
+  return deferredEphemeralResponse();
+}
+
+export function handleVerify(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  if (!hasManageGuild(interaction)) return forbiddenResponse();
+  ctx.waitUntil(
+    runVerify(env.DB, interaction.guild_id!, env.DISCORD_APPLICATION_ID, interaction.token)
+      .catch((err) => console.error("[handleVerify] error:", err))
+  );
+  return deferredEphemeralResponse();
+}
+
+async function runSettings(interaction: DiscordInteraction, env: Env): Promise<void> {
   const guildId = interaction.guild_id!;
   const appId = env.DISCORD_APPLICATION_ID;
   const token = interaction.token;
@@ -30,31 +68,31 @@ async function processAdmin(
   const subcommand = options?.[0]?.name as string | undefined;
 
   try {
+    if (subcommand === "주차") {
+      const n = options?.[0]?.options?.find((o: any) => o.name === "번호")?.value as number | undefined;
+      if (!n || n < 1) { await sendFollowup(appId, token, "올바른 주차 번호를 입력해 주세요.", { ephemeral: true }); return; }
+      await upsertGuildSettings(env.DB, guildId, { week_number_start: n });
+      const latest = await getLatestWeeklyGoalCycle(env.DB, guildId);
+      if (latest) await updateWeeklyGoalCycleWeekNumber(env.DB, latest.id, n);
+      await sendFollowup(appId, token, "✅ 이번 주부터 **" + n + "주차**로 표시됩니다.", { ephemeral: true });
+      return;
+    }
+
     if (subcommand === "갱신") {
       await handleRefreshAsync(guildId, env, appId, token);
       return;
     }
-
     if (subcommand === "초기화") {
       await runInitialize(env, guildId, appId, token);
       return;
     }
-
     if (subcommand === "검증") {
       await runVerify(env.DB, guildId, appId, token);
       return;
     }
-
-    if (subcommand === "설정") {
-      // options[0] = 설정 subcommand group, options[0].options = 실제 서브커맨드 배열
-      const settingsOptions = options?.[0]?.options as any[] | undefined;
-      await processSettingsOptions(env.DB, guildId, appId, token, settingsOptions);
-      return;
-    }
-
-    await sendFollowup(appId, token, "알 수 없는 관리자 명령어입니다.", { ephemeral: true });
+    await processSettingsOptions(env.DB, guildId, appId, token, options);
   } catch (err) {
-    console.error("[admin.handler] error:", err);
+    console.error("[settings] error:", err);
     await sendFollowup(appId, token, "처리 중 오류가 발생했습니다: " + String(err), { ephemeral: true });
   }
 }
@@ -118,7 +156,7 @@ async function runVerify(
 
   if (!settings) {
     await sendFollowup(appId, token,
-      "⚠️ 서버 설정이 없습니다. `/관리자 초기화`를 먼저 실행해 주세요.",
+      "⚠️ 서버 설정이 없습니다. `/설정 초기화`를 먼저 실행해 주세요.",
       { ephemeral: true }
     );
     return;
@@ -135,10 +173,8 @@ async function runVerify(
     check("리더보드 포럼", settings.leaderboard_forum_channel_id),
     "",
     "**스케줄 설정**",
-    "🕐 목표 생성: `" + (settings.goal_publish_time ?? "미설정") + "`",
-    "🕐 인증 시작: `" + (settings.checkin_thread_open_time ?? "미설정") + "`",
-    "🕐 인증 마감: `" + (settings.checkin_thread_close_time ?? "미설정") + "`",
-    "🕐 리더보드: `" + (settings.leaderboard_publish_time ?? "미설정") + "`",
+    "🕐 일간갱신 (인증): `" + (settings.checkin_thread_open_time ?? "미설정") + "`",
+    "🕐 주간갱신 (목표·리더보드): `" + (settings.goal_publish_time ?? "미설정") + "`",
     "🌏 타임존: `" + (settings.timezone ?? "미설정") + "`",
   ];
 

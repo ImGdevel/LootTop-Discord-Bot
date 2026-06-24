@@ -52,6 +52,7 @@ export async function getCurrentGoalBundle(
     status: "open",
     published_at: "",
     created_at: "",
+    week_number: null,
   };
 
   const { getWeeklyGoalCycle } = await import("../db/weekly-goal-cycles.repository.js");
@@ -101,6 +102,7 @@ export async function saveCurrentUserGoalsV2(
       status: "open",
       published_at: "",
       created_at: "",
+      week_number: null,
     };
   }
 
