@@ -21,6 +21,8 @@ export interface GuildSettingsRow {
   vacation_webhook_token: string | null;
   goal_webhook_id: string | null;
   goal_webhook_token: string | null;
+  week_start_day: number;   // 0=일, 1=월(기본), ..., 6=토
+  week_start_time: string;  // HH:MM (기본 '00:00')
   created_at: string;
   updated_at: string;
 }

@@ -19,6 +19,42 @@ export function getCheckinOperationalDateString(
   return formatUtcDateParts(anchor);
 }
 
+/**
+ * UTC 시각 기준으로 "운영상 현재 주차"의 시작일(YYYY-MM-DD)을 반환한다.
+ *
+ * 체크인의 cutoff 개념과 동일: weekStartDay 요일이지만 weekStartTime 이전이라면
+ * 아직 새 주가 시작되지 않은 것으로 간주하고 이전 주의 시작일을 반환한다.
+ *
+ * @param weekStartDay  0=일, 1=월(기본), 2=화, ..., 6=토
+ * @param weekStartTime HH:MM 형식 (기본 '00:00')
+ */
+export function getOperationalWeekStartDate(
+  utcDate: Date,
+  timezone: string,
+  weekStartDay: number = 1,
+  weekStartTime: string = "00:00"
+): string {
+  const local = getLocalDateTimeParts(utcDate, timezone);
+  const currentMinutes = local.hour * 60 + local.minute;
+  const cutoffMinutes = parseTimeToMinutes(weekStartTime);
+
+  // 로컬 날짜의 자정(UTC)을 기준으로 요일 계산
+  const localMidnight = new Date(Date.UTC(local.year, local.month - 1, local.day));
+  const currentDayOfWeek = localMidnight.getUTCDay(); // 0=일, 1=월, ...
+
+  // 현재 요일에서 weekStartDay까지 며칠 이전인지
+  let daysBack = (currentDayOfWeek - weekStartDay + 7) % 7;
+
+  // 정확히 weekStartDay이지만 cutoff 시각 이전이면 아직 이전 주
+  if (daysBack === 0 && currentMinutes < cutoffMinutes) {
+    daysBack = 7;
+  }
+
+  const weekStart = new Date(localMidnight);
+  weekStart.setUTCDate(localMidnight.getUTCDate() - daysBack);
+  return formatUtcDateParts(weekStart);
+}
+
 export function getWeekStartDate(localDateStr: string): string {
   const date = new Date(localDateStr + "T00:00:00");
   const day = date.getDay();

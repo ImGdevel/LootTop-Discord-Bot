@@ -33,7 +33,7 @@ function detectAction(settings: GuildSettingsRow, nowUtc: Date): CronAction | nu
     return "reminder";
   }
 
-  if (localNow.getDay() === 1 && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
+  if (localNow.getDay() === (settings.week_start_day ?? 1) && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
     return "leaderboard_cycle";
   }
 

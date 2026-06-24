@@ -5,7 +5,7 @@ import {
   insertWeeklyLeaderboardCycle,
 } from "../db/weekly-leaderboard-cycles.repository.js";
 import { buildPublicLeaderboard } from "../flows/leaderboard.flow.js";
-import { getWeekStartDate, getWeekEndDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
+import { getOperationalWeekStartDate, getWeekEndDate, formatWeekLabel } from "../domain/date.js";
 import type { WeeklyLeaderboardCycleRow } from "../db/types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -18,8 +18,12 @@ export async function ensureWeeklyLeaderboardCycle(
 ): Promise<WeeklyLeaderboardCycleRow> {
   const settings = await getGuildSettings(db, guildId);
   const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
-  const localDate = toLocalDateString(now, timezone);
-  const weekStartDate = getWeekStartDate(localDate);
+  const weekStartDate = getOperationalWeekStartDate(
+    now,
+    timezone,
+    settings?.week_start_day ?? 1,
+    settings?.week_start_time ?? "00:00"
+  );
   const weekEndDate = getWeekEndDate(weekStartDate);
 
   const existing = await getWeeklyLeaderboardCycle(db, guildId, weekStartDate);

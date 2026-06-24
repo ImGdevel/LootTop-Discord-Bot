@@ -1,7 +1,7 @@
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { getUser } from "../db/users.repository.js";
 import { getWeeklyCheckinCounts } from "../db/daily-checkin-entries.repository.js";
-import { getWeekStartDate, getWeekEndDate, toLocalDateString, formatWeekLabel } from "../domain/date.js";
+import { getOperationalWeekStartDate, getWeekEndDate, formatWeekLabel } from "../domain/date.js";
 import { MessageFlags } from "../types.js";
 
 const DEFAULT_TIMEZONE = "Asia/Seoul";
@@ -14,7 +14,7 @@ interface ParticipantStat {
   rate: number; // 0~100
 }
 
-/** 이번 주 경과 일수 (월=1 기준, 최대 7) */
+/** 이번 주 경과 일수 (weekStart 기준, 최대 7) */
 function elapsedDays(weekStartDate: string, timezone: string): number {
   const now = new Date();
   const localNow = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
@@ -40,8 +40,12 @@ export async function buildLeaderboardComponents(
 ): Promise<{ flags: number; components: unknown[] }> {
   const settings = await getGuildSettings(db, guildId);
   const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
-  const localDate = toLocalDateString(new Date(), timezone);
-  const weekStart = getWeekStartDate(localDate);
+  const weekStart = getOperationalWeekStartDate(
+    new Date(),
+    timezone,
+    settings?.week_start_day ?? 1,
+    settings?.week_start_time ?? "00:00"
+  );
   const weekEnd = getWeekEndDate(weekStart);
   const weekLabel = formatWeekLabel(weekStart);
   const elapsed = elapsedDays(weekStart, timezone);
