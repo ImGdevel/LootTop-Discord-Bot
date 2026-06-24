@@ -74,7 +74,7 @@ async function runSettings(interaction: DiscordInteraction, env: Env): Promise<v
       await upsertGuildSettings(env.DB, guildId, { week_number_start: n });
       const latest = await getLatestWeeklyGoalCycle(env.DB, guildId);
       if (latest) await updateWeeklyGoalCycleWeekNumber(env.DB, latest.id, n);
-      await sendFollowup(appId, token, "✅ 이번 주부터 **" + n + "주차**로 표시됩니다.", { ephemeral: true });
+      await sendFollowup(appId, token, "✅ 이번 주부터 **" + n + " Loop**로 표시됩니다.", { ephemeral: true });
       return;
     }
 

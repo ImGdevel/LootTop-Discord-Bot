@@ -1,11 +1,11 @@
 {
   "name": "looptop-discord-bot",
-  "version": "0.1.0",
+  "version": "0.7.1",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "ship": "wrangler d1 migrations apply looptop-discord-bot --remote && tsx src/scripts/register-commands.ts && wrangler deploy",
+    "deploy": "npm version patch --no-git-tag-version && node scripts/sync-version.mjs && wrangler deploy",
+    "ship": "npm version minor --no-git-tag-version && node scripts/sync-version.mjs && wrangler d1 migrations apply looptop-discord-bot --remote && tsx src/scripts/register-commands.ts && wrangler deploy",
     "register": "tsx src/scripts/register-commands.ts",
     "test": "vitest run",
     "test:watch": "vitest",
