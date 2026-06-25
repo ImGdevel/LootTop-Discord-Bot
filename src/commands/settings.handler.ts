@@ -113,14 +113,18 @@ export async function processSettingsOptions(
   }
 
   if (subcommand === "시간") {
-    // 시간(type-2 group) → 일간갱신/주간갱신/알림갱신(type-1)
     const timeSubOptions = options?.[0]?.options as any[] | undefined;
     const timeSub = timeSubOptions?.[0]?.name as string | undefined;
     const timeParams = timeSubOptions?.[0]?.options as any[] | undefined;
-    const time = timeParams?.find((o: any) => o.name === "시간")?.value as string;
+
+    const h = timeParams?.find((o: any) => o.name === "시")?.value as number | undefined;
+    const m = timeParams?.find((o: any) => o.name === "분")?.value as number | undefined;
+    const time = h != null && m != null
+      ? String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0")
+      : undefined;
 
     if (timeSub === "일간갱신") {
-      if (!time) { await sendFollowup(appId, token, "시간을 입력해 주세요.", { ephemeral: true }); return; }
+      if (!time) { await sendFollowup(appId, token, "시와 분을 입력해 주세요.", { ephemeral: true }); return; }
       await updateGuildSetting(db, guildId, "checkin_thread_open_time", time);
       await updateGuildSetting(db, guildId, "checkin_thread_close_time", time);
       await sendFollowup(appId, token, "✅ 일간갱신 시간이 `" + time + "`으로 설정되었습니다. (인증 시작·마감 동일 적용)", { ephemeral: true });
@@ -129,7 +133,7 @@ export async function processSettingsOptions(
 
     if (timeSub === "주간갱신") {
       const dayValue = timeParams?.find((o: any) => o.name === "요일")?.value as string;
-      if (!dayValue || !time) { await sendFollowup(appId, token, "요일과 시간을 모두 입력해 주세요.", { ephemeral: true }); return; }
+      if (!dayValue || !time) { await sendFollowup(appId, token, "요일, 시, 분을 모두 입력해 주세요.", { ephemeral: true }); return; }
       const dayName = DAY_NAMES[dayValue] ?? dayValue;
       await updateGuildSetting(db, guildId, "goal_publish_time", time);
       await updateGuildSetting(db, guildId, "leaderboard_publish_time", time);
@@ -140,7 +144,7 @@ export async function processSettingsOptions(
     }
 
     if (timeSub === "알림갱신") {
-      if (!time) { await sendFollowup(appId, token, "시간을 입력해 주세요.", { ephemeral: true }); return; }
+      if (!time) { await sendFollowup(appId, token, "시와 분을 입력해 주세요.", { ephemeral: true }); return; }
       await updateGuildSetting(db, guildId, "checkin_reminder_time", time);
       await sendFollowup(appId, token, "✅ 알림 시간이 `" + time + "`으로 설정되었습니다.", { ephemeral: true });
       return;

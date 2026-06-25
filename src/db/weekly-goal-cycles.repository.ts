@@ -89,6 +89,17 @@ export async function updateWeeklyGoalCycleWeekNumber(
     .run();
 }
 
+export async function updateWeeklyGoalCycleTitle(
+  db: D1Database,
+  id: number,
+  title: string
+): Promise<void> {
+  await db
+    .prepare("UPDATE weekly_goal_cycles SET title = ? WHERE id = ?")
+    .bind(title, id)
+    .run();
+}
+
 export async function getLatestWeeklyGoalCycleWeekNumber(
   db: D1Database,
   guildId: string

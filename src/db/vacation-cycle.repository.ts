@@ -12,6 +12,28 @@ export async function getWeeklyVacationCycle(
   return result ?? null;
 }
 
+export async function getLatestWeeklyVacationCycle(
+  db: D1Database,
+  guildId: string
+): Promise<WeeklyVacationCycleRow | null> {
+  const result = await db
+    .prepare("SELECT * FROM weekly_vacation_cycles WHERE guild_id = ? ORDER BY week_start_date DESC LIMIT 1")
+    .bind(guildId)
+    .first<WeeklyVacationCycleRow>();
+  return result ?? null;
+}
+
+export async function updateWeeklyVacationCycleTitle(
+  db: D1Database,
+  id: number,
+  title: string
+): Promise<void> {
+  await db
+    .prepare("UPDATE weekly_vacation_cycles SET title = ? WHERE id = ?")
+    .bind(title, id)
+    .run();
+}
+
 export async function insertWeeklyVacationCycle(
   db: D1Database,
   input: { guildId: string; weekStartDate: string; threadId: string; title: string }

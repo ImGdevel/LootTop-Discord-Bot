@@ -7,7 +7,10 @@ import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { handleRefreshAsync } from "../interactions/refresh.handler.js";
 import { ensureCurrentVacationCycle } from "../services/vacation-cycle.service.js";
 import { forbiddenResponse, hasManageGuild, processSettingsOptions } from "./settings.handler.js";
-import { getLatestWeeklyGoalCycle, updateWeeklyGoalCycleWeekNumber } from "../db/weekly-goal-cycles.repository.js";
+import { getLatestWeeklyGoalCycle, updateWeeklyGoalCycleWeekNumber, updateWeeklyGoalCycleTitle } from "../db/weekly-goal-cycles.repository.js";
+import { getLatestWeeklyVacationCycle, updateWeeklyVacationCycleTitle } from "../db/vacation-cycle.repository.js";
+import { editChannel } from "../discord/rest.js";
+import { weekLabel } from "../domain/date.js";
 import { upsertGuildSettings } from "../db/guild-settings.repository.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -73,7 +76,19 @@ async function runSettings(interaction: DiscordInteraction, env: Env): Promise<v
       if (!n || n < 1) { await sendFollowup(appId, token, "올바른 주차 번호를 입력해 주세요.", { ephemeral: true }); return; }
       await upsertGuildSettings(env.DB, guildId, { week_number_start: n });
       const latest = await getLatestWeeklyGoalCycle(env.DB, guildId);
-      if (latest) await updateWeeklyGoalCycleWeekNumber(env.DB, latest.id, n);
+      if (latest) {
+        await updateWeeklyGoalCycleWeekNumber(env.DB, latest.id, n);
+        const newGoalTitle = weekLabel(n, latest.week_start_date) + " 목표";
+        await updateWeeklyGoalCycleTitle(env.DB, latest.id, newGoalTitle);
+        await editChannel(latest.forum_thread_id, env.DISCORD_BOT_TOKEN, { name: newGoalTitle });
+
+        const latestVac = await getLatestWeeklyVacationCycle(env.DB, guildId);
+        if (latestVac && latestVac.week_start_date === latest.week_start_date) {
+          const newVacTitle = weekLabel(n, latestVac.week_start_date) + " 휴가";
+          await updateWeeklyVacationCycleTitle(env.DB, latestVac.id, newVacTitle);
+          await editChannel(latestVac.thread_id, env.DISCORD_BOT_TOKEN, { name: newVacTitle });
+        }
+      }
       await sendFollowup(appId, token, "✅ 이번 주부터 **Loop " + n + "**로 표시됩니다.", { ephemeral: true });
       return;
     }

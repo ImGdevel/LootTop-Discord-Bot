@@ -77,6 +77,6 @@ describe("guild-settings.service", () => {
     expect(actual).toContain("목표 포럼: <#3>");
     expect(actual).toContain("인증: <#2>");
     expect(actual).toContain("리더보드 포럼: <#4>");
-    expect(actual).toContain("목표 생성: 18:00");
+    expect(actual).toContain("주간갱신 (목표·리더보드):");
   });
 });

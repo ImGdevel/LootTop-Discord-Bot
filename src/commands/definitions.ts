@@ -75,7 +75,8 @@ export const COMMAND_DEFINITIONS = [
             name: "일간갱신",
             description: "매일 인증 시작·마감 시간을 설정합니다.",
             options: [
-              { type: 3, name: "시간", description: "HH:MM 형식", required: true, autocomplete: true },
+              { type: 4, name: "시", description: "시 (0~23)", required: true, min_value: 0, max_value: 23 },
+              { type: 4, name: "분", description: "분 (0~59)", required: true, min_value: 0, max_value: 59 },
             ],
           },
           {
@@ -83,14 +84,9 @@ export const COMMAND_DEFINITIONS = [
             name: "주간갱신",
             description: "매주 목표·리더보드 게시 요일과 시간을 설정합니다.",
             options: [
-              {
-                type: 3,
-                name: "요일",
-                description: "게시 요일",
-                required: true,
-                choices: DAY_CHOICES,
-              },
-              { type: 3, name: "시간", description: "HH:MM 형식", required: true, autocomplete: true },
+              { type: 3, name: "요일", description: "게시 요일", required: true, choices: DAY_CHOICES },
+              { type: 4, name: "시", description: "시 (0~23)", required: true, min_value: 0, max_value: 23 },
+              { type: 4, name: "분", description: "분 (0~59)", required: true, min_value: 0, max_value: 59 },
             ],
           },
           {
@@ -98,7 +94,8 @@ export const COMMAND_DEFINITIONS = [
             name: "알림갱신",
             description: "일일 알림 시간을 설정합니다.",
             options: [
-              { type: 3, name: "시간", description: "HH:MM 형식", required: true, autocomplete: true },
+              { type: 4, name: "시", description: "시 (0~23)", required: true, min_value: 0, max_value: 23 },
+              { type: 4, name: "분", description: "분 (0~59)", required: true, min_value: 0, max_value: 59 },
             ],
           },
         ],
