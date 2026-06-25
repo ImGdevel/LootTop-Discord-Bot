@@ -2,12 +2,12 @@ import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
 import { deferredEphemeralResponse, rawModalResponse, sendFollowup } from "../discord/response.js";
 import { ensureTodayCheckinCycle } from "../services/checkin-cycle-v2.service.js";
 import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
-import { insertSimpleCheckin, getDailyCheckinEntryById, updateSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
+import { insertSimpleCheckin, getDailyCheckinEntryById, updateSimpleCheckin, softDeleteCheckin } from "../db/daily-checkin-entries.repository.js";
 import { getDailyCheckinCycleById } from "../db/daily-checkin-cycles.repository.js";
 import { upsertUser } from "../db/users.repository.js";
-import { awardCheckinPoints } from "../services/points.service.js";
+import { awardCheckinPoints, revokeCheckinPoints } from "../services/points.service.js";
 import { getWeekStartDate } from "../domain/date.js";
-import { createMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
+import { createMessage, deleteMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
 import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -207,6 +207,7 @@ async function handleCheckinModalAsync(
         ...cardComponents,
         { type: 1, components: [
           { type: 2, style: 2, label: "✏️ 수정", custom_id: "checkin:edit:" + entryId },
+          { type: 2, style: 4, label: "🗑️ 삭제", custom_id: "checkin:delete:" + entryId },
         ]},
       ],
     }],
@@ -448,4 +449,59 @@ async function handleCheckinEditModalAsync(
 
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
     "✅ 인증이 수정되었습니다.", { ephemeral: true });
+}
+
+export function handleCheckinDeleteButton(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  ctx.waitUntil(handleCheckinDeleteAsync(interaction, env));
+  return deferredEphemeralResponse();
+}
+
+async function handleCheckinDeleteAsync(
+  interaction: DiscordInteraction,
+  env: Env
+): Promise<void> {
+  const entryId = parseInt((interaction.data?.custom_id ?? "").split(":")[2] ?? "", 10);
+  const user = interaction.member?.user ?? interaction.user;
+  const guildId = interaction.guild_id;
+  if (!user || !guildId || isNaN(entryId)) return;
+
+  const entry = await getDailyCheckinEntryById(env.DB, entryId);
+  if (!entry || entry.discord_user_id !== user.id) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 삭제 권한이 없습니다.", { ephemeral: true });
+    return;
+  }
+
+  if (entry.status === "discarded") {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 이미 삭제된 인증입니다.", { ephemeral: true });
+    return;
+  }
+
+  const cycle = await getDailyCheckinCycleById(env.DB, entry.daily_checkin_cycle_id);
+  if (!cycle) return;
+
+  const weekStartDate = getWeekStartDate(cycle.checkin_date);
+
+  // 포인트 회수 먼저 (삭제 전 카운트 기준)
+  await revokeCheckinPoints(env.DB, guildId, user.id, cycle.checkin_date, weekStartDate);
+
+  // 소프트 삭제
+  await softDeleteCheckin(env.DB, entryId);
+
+  // 채널 메시지 삭제
+  if (entry.entry_message_id) {
+    try {
+      await deleteMessage(cycle.thread_id, entry.entry_message_id, env.DISCORD_BOT_TOKEN);
+    } catch (err) {
+      console.error("[checkin] 메시지 삭제 실패:", err);
+    }
+  }
+
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+    "🗑️ 인증이 삭제되었습니다.", { ephemeral: true });
 }

@@ -207,6 +207,24 @@ export async function editWebhookMessage(
   return res.json() as Promise<DiscordMessage>;
 }
 
+export async function deleteMessage(
+  channelId: string,
+  messageId: string,
+  botToken: string
+): Promise<void> {
+  const res = await fetch(
+    "https://discord.com/api/v10/channels/" + channelId + "/messages/" + messageId,
+    {
+      method: "DELETE",
+      headers: { Authorization: "Bot " + botToken },
+    }
+  );
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error("deleteMessage failed: " + res.status + " " + text);
+  }
+}
+
 export async function channelExists(
   channelId: string,
   botToken: string

@@ -5,6 +5,7 @@ import {
   handleCheckinButton,
   handleCheckinModal,
   handleCheckinCommand,
+  handleCheckinDeleteButton,
   handleCheckinEditButton,
   handleCheckinEditModal,
 } from "./checkin.handler.js";
@@ -70,6 +71,9 @@ async function routeComponent(
 ): Promise<Response | null> {
   const id = interaction.data?.custom_id ?? "";
 
+  if (id.startsWith("checkin:delete:")) {
+    return handleCheckinDeleteButton(interaction, env, ctx);
+  }
   if (id.startsWith("checkin:edit:")) {
     return handleCheckinEditButton(interaction, env);
   }

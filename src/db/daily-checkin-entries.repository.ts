@@ -94,6 +94,13 @@ export async function updateSimpleCheckin(
     .run();
 }
 
+export async function softDeleteCheckin(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare("UPDATE daily_checkin_entries SET status = 'discarded' WHERE id = ?")
+    .bind(id)
+    .run();
+}
+
 // 단순 인증 저장 (content/proof_url 직접)
 export async function insertSimpleCheckin(
   db: D1Database,
