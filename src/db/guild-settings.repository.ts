@@ -30,8 +30,12 @@ export async function upsertGuildSettings(
            checkin_thread_close_time, checkin_webhook_id, checkin_webhook_token,
            notification_channel_id, vacation_channel_id, vacation_webhook_id, vacation_webhook_token,
            goal_webhook_id, goal_webhook_token,
+           week_start_day, week_start_time,
+           leaderboard_publish_day, goal_publish_day,
+           checkin_thread_open_day, checkin_thread_close_day,
+           week_number_start,
            created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         guildId,
@@ -56,6 +60,13 @@ export async function upsertGuildSettings(
         fields.vacation_webhook_token ?? null,
         fields.goal_webhook_id ?? null,
         fields.goal_webhook_token ?? null,
+        fields.week_start_day ?? 1,
+        fields.week_start_time ?? "00:00",
+        fields.leaderboard_publish_day ?? null,
+        fields.goal_publish_day ?? null,
+        fields.checkin_thread_open_day ?? null,
+        fields.checkin_thread_close_day ?? null,
+        fields.week_number_start ?? 1,
         now,
         now
       )
@@ -76,6 +87,10 @@ export async function upsertGuildSettings(
           notification_channel_id = ?, vacation_channel_id = ?,
           vacation_webhook_id = ?, vacation_webhook_token = ?,
           goal_webhook_id = ?, goal_webhook_token = ?,
+          week_start_day = ?, week_start_time = ?,
+          leaderboard_publish_day = ?, goal_publish_day = ?,
+          checkin_thread_open_day = ?, checkin_thread_close_day = ?,
+          week_number_start = ?,
           updated_at = ?
         WHERE guild_id = ?
       `)
@@ -101,6 +116,13 @@ export async function upsertGuildSettings(
         merged.vacation_webhook_token ?? null,
         merged.goal_webhook_id ?? null,
         merged.goal_webhook_token ?? null,
+        merged.week_start_day ?? 1,
+        merged.week_start_time ?? "00:00",
+        merged.leaderboard_publish_day ?? null,
+        merged.goal_publish_day ?? null,
+        merged.checkin_thread_open_day ?? null,
+        merged.checkin_thread_close_day ?? null,
+        merged.week_number_start ?? 1,
         now,
         guildId
       )
