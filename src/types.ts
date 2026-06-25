@@ -4,6 +4,8 @@ export interface Env {
   DISCORD_PUBLIC_KEY: string;
   DISCORD_APPLICATION_ID: string;
   DISCORD_BOT_TOKEN: string;
+  APP_VERSION: string;
+  VERSION_METADATA: WorkerVersionMetadata;
 }
 
 // Discord Interaction 타입 상수
@@ -21,6 +23,7 @@ export const InteractionResponseType = {
   DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
   DEFERRED_UPDATE_MESSAGE: 6,
   UPDATE_MESSAGE: 7,
+  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT: 8,
   MODAL: 9,
 } as const;
 
@@ -38,6 +41,7 @@ export interface DiscordInteraction {
     id?: string;
     name?: string;
     custom_id?: string;
+    options?: unknown[];
     components?: DiscordModalComponent[];
     values?: string[];
     resolved?: {

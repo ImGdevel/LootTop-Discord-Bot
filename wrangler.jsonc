@@ -17,5 +17,10 @@
       "59 14 * * *"
     ]
   },
-  "vars": {}
+  "vars": {
+    "APP_VERSION": "0.7.3"
+  },
+  "version_metadata": {
+    "binding": "VERSION_METADATA"
+  }
 }
