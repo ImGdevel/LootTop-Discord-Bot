@@ -17,23 +17,29 @@ function detectAction(settings: GuildSettingsRow, nowUtc: Date): CronAction | nu
   const tz = settings.timezone;
   const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
 
-  if (localNow.getDay() === 0 && isScheduledTime(nowUtc, settings.goal_publish_time ?? "18:00", tz)) {
+  const day = localNow.getDay();
+
+  const goalDay = settings.goal_publish_day ?? 0;
+  if (day === goalDay && isScheduledTime(nowUtc, settings.goal_publish_time ?? "18:00", tz)) {
     return "goal_cycle";
   }
 
-  if (isScheduledTime(nowUtc, settings.checkin_thread_open_time ?? "04:00", tz)) {
+  const openDay = settings.checkin_thread_open_day;
+  if ((openDay === null || day === openDay) && isScheduledTime(nowUtc, settings.checkin_thread_open_time ?? "04:00", tz)) {
     return "checkin_open";
   }
 
-  if (isScheduledTime(nowUtc, settings.checkin_thread_close_time ?? "04:00", tz)) {
+  const closeDay = settings.checkin_thread_close_day;
+  if ((closeDay === null || day === closeDay) && isScheduledTime(nowUtc, settings.checkin_thread_close_time ?? "04:00", tz)) {
     return "checkin_close";
   }
 
-  if (isScheduledTime(nowUtc, "23:59", tz)) {
+  if (isScheduledTime(nowUtc, settings.checkin_reminder_time ?? "23:59", tz)) {
     return "reminder";
   }
 
-  if (localNow.getDay() === (settings.week_start_day ?? 1) && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
+  const lbDay = settings.leaderboard_publish_day ?? settings.week_start_day ?? 1;
+  if (day === lbDay && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
     return "leaderboard_cycle";
   }
 
