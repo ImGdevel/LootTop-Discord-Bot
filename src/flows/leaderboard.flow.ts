@@ -14,6 +14,7 @@ interface ParticipantStat {
   targetDays: number;
   rate: number; // 0~100
   totalPoints: number;
+  weeklyPoints: number; // 이번 주 획득 포인트 (tie-break용)
 }
 
 /** 이번 주 경과 일수 (weekStart 기준, 최대 7) */
@@ -46,11 +47,23 @@ function medal(rank: number): string {
 }
 
 function top3Entry(s: ParticipantStat, rank: number): string {
-  return `${medal(rank)} **${s.displayName}**  ${rankTitle(s.rate)}\n**${s.rate}%** · ${s.checkins}/${s.targetDays}일 · 🪙 ${s.totalPoints.toLocaleString()}p`;
+  return `${medal(rank)} **${s.displayName}**  ${rankTitle(s.rate)}\n**${s.rate}%** · ${s.checkins}/${s.targetDays}일 · 🪙 ${s.totalPoints.toLocaleString()}p (+${s.weeklyPoints}p)`;
 }
 
 function allEntry(s: ParticipantStat, rank: number): string {
-  return `${rank}. **${s.displayName}**  ${progressBar(s.rate)}  **${s.rate}%** (${s.checkins}/${s.targetDays}일) · 🪙 ${s.totalPoints.toLocaleString()}p`;
+  return `${rank}. **${s.displayName}**  ${progressBar(s.rate)}  **${s.rate}%** (${s.checkins}/${s.targetDays}일) · 🪙 ${s.totalPoints.toLocaleString()}p (+${s.weeklyPoints}p)`;
+}
+
+function assignRanks(stats: ParticipantStat[]): number[] {
+  const ranks: number[] = [];
+  for (let i = 0; i < stats.length; i++) {
+    if (i === 0) { ranks.push(1); continue; }
+    const prev = stats[i - 1]!;
+    const cur = stats[i]!;
+    const tied = prev.rate === cur.rate && prev.weeklyPoints === cur.weeklyPoints;
+    ranks.push(tied ? (ranks[i - 1] ?? 1) : i + 1);
+  }
+  return ranks;
 }
 
 const DIV = { type: 14, divider: true, spacing: 1 };
@@ -99,6 +112,28 @@ export async function buildLeaderboardComponents(
   const allCounts = await getWeeklyCheckinCounts(db, guildId, weekStart, weekEnd);
   const countMap = new Map(allCounts.map((r) => [r.discord_user_id, r.count]));
 
+  // 이번 주 획득 포인트 집계 (tie-break용)
+  const weekPointsRows = await db
+    .prepare(`
+      SELECT
+        dce.discord_user_id,
+        SUM(CASE WHEN CAST(strftime('%w', dcc.checkin_date) AS INTEGER) IN (0,6) THEN 150 ELSE 100 END) as base_points,
+        SUM(CASE WHEN CAST(strftime('%w', dcc.checkin_date) AS INTEGER) BETWEEN 1 AND 5 THEN 1 ELSE 0 END) as weekday_count
+      FROM daily_checkin_entries dce
+      JOIN daily_checkin_cycles dcc ON dcc.id = dce.daily_checkin_cycle_id
+      WHERE dce.guild_id = ? AND dce.status IN ('valid', 'late')
+        AND dcc.checkin_date >= ? AND dcc.checkin_date <= ?
+      GROUP BY dce.discord_user_id
+    `)
+    .bind(guildId, weekStart, weekEnd)
+    .all<{ discord_user_id: string; base_points: number; weekday_count: number }>();
+  const weekPointsMap = new Map(
+    weekPointsRows.results.map((r) => [
+      r.discord_user_id,
+      r.base_points + (r.weekday_count >= 5 ? 300 : 0),
+    ])
+  );
+
   // 참여자별 통계
   const stats: ParticipantStat[] = await Promise.all(
     [...participantIds].map(async (uid) => {
@@ -113,19 +148,23 @@ export async function buildLeaderboardComponents(
         targetDays: elapsed,
         rate: Math.min(rate, 100),
         totalPoints: user?.total_points ?? 0,
+        weeklyPoints: weekPointsMap.get(uid) ?? 0,
       };
     })
   );
 
-  // 달성률 내림차순 정렬
-  stats.sort((a, b) => b.rate - a.rate || b.checkins - a.checkins);
+  // 달성률 → 이번 주 포인트 → 인증 수 내림차순 정렬
+  stats.sort((a, b) => b.rate - a.rate || b.weeklyPoints - a.weeklyPoints || b.checkins - a.checkins);
 
-  // TOP 3 (빈 슬롯 포함)
+  // 공동 순위 계산
+  const ranks = assignRanks(stats);
+
+  // TOP 3 (빈 슬롯 포함, 공동 순위 반영)
   const top3Lines: string[] = [];
   for (let i = 0; i < 3; i++) {
     const s = stats[i];
     if (s) {
-      top3Lines.push(top3Entry(s, i + 1));
+      top3Lines.push(top3Entry(s, ranks[i] ?? (i + 1)));
     } else {
       top3Lines.push(`${medal(i + 1)}  —`);
     }
@@ -134,7 +173,7 @@ export async function buildLeaderboardComponents(
 
   // 전체 순위
   const allText = stats.length > 0
-    ? stats.map((s, i) => allEntry(s, i + 1)).join("\n")
+    ? stats.map((s, i) => allEntry(s, ranks[i] ?? (i + 1))).join("\n")
     : "아직 참여자가 없습니다.";
 
   // 통계 푸터

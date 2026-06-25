@@ -34,6 +34,10 @@ export const COMMAND_DEFINITIONS = [
     description: "현재 배포 버전과 상태를 확인합니다.",
   },
   {
+    name: "프로필",
+    description: "내 누적 포인트와 인증 현황을 확인합니다.",
+  },
+  {
     name: "설정",
     description: "서버 설정을 변경합니다.",
     default_member_permissions: "32",
@@ -143,6 +147,7 @@ export const COMMANDS = {
   VACATION: "휴가",
   GOAL: "목표",
   SETTINGS: "설정",
+  PROFILE: "프로필",
 } as const;
 
 export const MODAL_IDS = {

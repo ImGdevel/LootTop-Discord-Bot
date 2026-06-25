@@ -29,24 +29,30 @@ export async function ensureWeeklyLeaderboardCycle(
 
   const existing = await getWeeklyLeaderboardCycle(db, guildId, weekStartDate);
   if (existing) {
-    const alive = await channelExists(existing.forum_thread_id, botToken);
-    if (alive) return existing;
+    if (existing.channel_message_id != null) {
+      const alive = await channelExists(existing.forum_thread_id, botToken);
+      if (alive) return existing;
+    }
     await db.prepare("DELETE FROM weekly_leaderboard_cycles WHERE id = ?").bind(existing.id).run();
   }
 
   const channelId = settings?.leaderboard_channel_id;
   if (!channelId) throw new Error("leaderboard_channel_id not configured");
 
-  const weekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
-  const label = weekLabel(weekNum, weekStartDate);
-  const title = label + " 리더보드";
-  const { flags, components } = await buildPublicLeaderboard(db, guildId);
+  // 리더보드는 이전 주 결과 요약 → 이전 주 start date 계산
+  const prevWeekMs = new Date(weekStartDate + "T00:00:00").getTime() - 7 * 86400000;
+  const prevWeekStartDate = new Date(prevWeekMs).toISOString().slice(0, 10);
 
-  const message = await createMessage(channelId, botToken, {
-    content: "## 📊 " + title,
-    flags,
-    components,
-  });
+  const prevCycleRow = await db
+    .prepare("SELECT week_number FROM weekly_goal_cycles WHERE guild_id = ? AND week_start_date = ? LIMIT 1")
+    .bind(guildId, prevWeekStartDate)
+    .first<{ week_number: number | null }>();
+  const weekNum = prevCycleRow?.week_number ?? await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
+  const label = weekLabel(weekNum, prevWeekStartDate);
+  const title = label + " 리더보드";
+  const { flags, components } = await buildPublicLeaderboard(db, guildId, prevWeekStartDate);
+
+  const message = await createMessage(channelId, botToken, { flags, components });
 
   return insertWeeklyLeaderboardCycle(db, {
     guildId,

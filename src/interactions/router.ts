@@ -9,6 +9,7 @@ import {
   handleCheckinEditModal,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
+import { handleProfileCommand } from "./profile.handler.js";
 import { handleVersionCommand } from "./version.handler.js";
 import { handleTimeAutocomplete } from "../commands/settings.handler.js";
 import { handleSettings } from "../commands/admin.handler.js";
@@ -55,6 +56,8 @@ function routeCommand(
       return handleVersionCommand(interaction, env);
     case COMMANDS.SETTINGS:
       return handleSettings(interaction, env, ctx);
+    case COMMANDS.PROFILE:
+      return handleProfileCommand(interaction, env, ctx);
     default:
       return null;
   }
