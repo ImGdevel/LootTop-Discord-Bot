@@ -19,7 +19,12 @@ export type SettingsField =
   | "vacation_channel_id"
   | "goal_publish_time"
   | "checkin_thread_open_time"
-  | "checkin_thread_close_time";
+  | "checkin_thread_close_time"
+  | "leaderboard_publish_day"
+  | "goal_publish_day"
+  | "checkin_thread_open_day"
+  | "checkin_thread_close_day"
+  | "week_number_start";
 
 export interface SettingsUpdateResult {
   success: boolean;
@@ -75,6 +80,11 @@ export async function updateGuildSetting(
     goal_publish_time: "목표 생성 시간",
     checkin_thread_open_time: "인증 시작 시간",
     checkin_thread_close_time: "인증 마감 시간",
+    leaderboard_publish_day: "리더보드 게시 요일",
+    goal_publish_day: "목표 생성 요일",
+    checkin_thread_open_day: "인증 시작 요일",
+    checkin_thread_close_day: "인증 마감 요일",
+    week_number_start: "주차 시작 번호",
   };
 
   const formattedValue =
@@ -85,6 +95,9 @@ export async function updateGuildSetting(
     message: "✅ " + fieldLabel[field] + "이(가) " + formattedValue + "(으)로 설정되었습니다.",
   };
 }
+
+const DAY_KO = ["일","월","화","수","목","금","토"];
+const dayStr = (d: number | null) => d != null ? " · " + DAY_KO[d] + "요일" : "";
 
 export function formatSettings(settings: GuildSettingsRow | null): string {
   if (!settings) {
@@ -103,10 +116,9 @@ export function formatSettings(settings: GuildSettingsRow | null): string {
     "인증: " + ch(settings.checkin_channel_id),
     "리더보드 포럼: " + ch(settings.leaderboard_forum_channel_id),
     "",
-    "**스케줄 시간 (서버 타임존 기준)**",
-    "목표 생성: " + t(settings.goal_publish_time),
-    "인증 시작: " + t(settings.checkin_thread_open_time),
-    "인증 마감: " + t(settings.checkin_thread_close_time),
-    "리더보드 게시: " + t(settings.leaderboard_publish_time),
+    "**스케줄 (서버 타임존 기준)**",
+    "일간갱신 (인증): " + t(settings.checkin_thread_open_time),
+    "주간갱신 (목표·리더보드): " + DAY_KO[settings.goal_publish_day ?? settings.week_start_day ?? 1] + "요일 " + t(settings.goal_publish_time),
+    "알림: " + t(settings.checkin_reminder_time ?? "23:59"),
   ].join("\n");
 }
