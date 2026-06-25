@@ -6,6 +6,7 @@ const handlerMocks = vi.hoisted(() => ({
   handleGoalCommand: vi.fn(),
   handleGoalButton: vi.fn(),
   handleHomeCommand: vi.fn(),
+  handleVersionCommand: vi.fn(),
   handleCheckinButton: vi.fn(),
   handleCheckinModal: vi.fn(),
   handleCheckinCommand: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock("../../src/interactions/goal.handler.js", () => ({
 
 vi.mock("../../src/interactions/home.handler.js", () => ({
   handleHomeCommand: handlerMocks.handleHomeCommand,
+}));
+
+vi.mock("../../src/interactions/version.handler.js", () => ({
+  handleVersionCommand: handlerMocks.handleVersionCommand,
 }));
 
 vi.mock("../../src/interactions/checkin.handler.js", () => ({
@@ -75,6 +80,15 @@ describe("routeInteraction", () => {
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleCheckinCommand).toHaveBeenCalledWith(interaction, env, ctx);
+  });
+
+  it("routes /버전 command to the version handler", () => {
+    const interaction = createCommandInteraction(COMMANDS.VERSION);
+
+    const actual = routeInteraction(interaction, env, ctx);
+
+    expect(actual).toBe(response);
+    expect(handlerMocks.handleVersionCommand).toHaveBeenCalledWith(interaction, env);
   });
 
   it("routes checkin component ids to the checkin button handler", () => {

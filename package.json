@@ -1,6 +1,6 @@
 {
   "name": "looptop-discord-bot",
-  "version": "0.7.1",
+  "version": "0.7.3",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
