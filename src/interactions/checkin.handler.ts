@@ -2,9 +2,10 @@ import { MODAL_FIELDS, MODAL_IDS } from "../commands/definitions.js";
 import { deferredEphemeralResponse, rawModalResponse, sendFollowup } from "../discord/response.js";
 import { ensureTodayCheckinCycle } from "../services/checkin-cycle-v2.service.js";
 import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
-import { insertSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
+import { insertSimpleCheckin, getDailyCheckinEntryById, updateSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
+import { getDailyCheckinCycleById } from "../db/daily-checkin-cycles.repository.js";
 import { upsertUser } from "../db/users.repository.js";
-import { createMessage, executeWebhook } from "../discord/rest.js";
+import { createMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
 import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -25,13 +26,13 @@ export function handleCheckinButton(_interaction: DiscordInteraction): Response 
     },
     {
       type: 18,
-      label: "🖼️ 인증 이미지 (선택, 최대 3장)",
+      label: "🖼️ 인증 이미지 (선택, 최대 10장)",
       description: "스크린샷, 사진 등 인증 자료를 첨부하세요.",
       component: {
         type: 19,
         custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
         min_values: 0,
-        max_values: 3,
+        max_values: 10,
         required: false,
       },
     },
@@ -168,10 +169,21 @@ async function handleCheckinModalAsync(
     });
   }
 
-  const messageBody: Record<string, unknown> = {
+  const buildMessageBody = (entryId: number) => ({
     flags: MessageFlags.IS_COMPONENTS_V2,
-    components: [{ type: 17, accent_color: 0x57F287, components: cardComponents }],
-  };
+    components: [{
+      type: 17,
+      accent_color: 0x57F287,
+      components: [
+        ...cardComponents,
+        { type: 1, components: [
+          { type: 2, style: 2, label: "✏️ 수정", custom_id: "checkin:edit:" + entryId },
+        ]},
+      ],
+    }],
+  });
+
+  const messageBody: Record<string, unknown> = buildMessageBody(entry.id);
 
   try {
     let msg: { id: string };
@@ -204,4 +216,204 @@ export function handleCheckinCommand(
   _ctx: ExecutionContext
 ): Response {
   return handleCheckinButton(interaction);
+}
+
+export async function handleCheckinEditButton(
+  interaction: DiscordInteraction,
+  env: Env
+): Promise<Response> {
+  const entryId = parseInt((interaction.data?.custom_id ?? "").split(":")[2] ?? "", 10);
+  if (isNaN(entryId)) return new Response("Bad Request", { status: 400 });
+
+  const user = interaction.member?.user ?? interaction.user;
+  if (!user) return new Response("Bad Request", { status: 400 });
+
+  const entry = await getDailyCheckinEntryById(env.DB, entryId);
+  if (!entry || entry.discord_user_id !== user.id) {
+    return rawModalResponse("noop", "오류", []);
+  }
+
+  const today = await ensureTodayCheckinCycle(env.DB, interaction.guild_id!, env.DISCORD_BOT_TOKEN);
+  if (entry.daily_checkin_cycle_id !== today.id) {
+    return rawModalResponse("noop", "오류", []);
+  }
+
+  return rawModalResponse(MODAL_IDS.CHECKIN_EDIT + ":" + entryId, "✏️ 인증 수정", [
+    {
+      type: 18,
+      label: "📝 오늘 한 일",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.CONTENT,
+        style: 2,
+        min_length: 5,
+        required: true,
+        value: entry.content ?? "",
+      },
+    },
+    {
+      type: 18,
+      label: "🖼️ 인증 이미지 (선택, 최대 10장)",
+      description: "새로 올리면 기존 이미지가 교체됩니다. 비워두면 기존 이미지가 유지됩니다.",
+      component: {
+        type: 19,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_IMAGE,
+        min_values: 0,
+        max_values: 10,
+        required: false,
+      },
+    },
+    {
+      type: 18,
+      label: "🔗 인증 URL (선택)",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.PROOF_URL,
+        style: 1,
+        placeholder: "https://...",
+        required: false,
+        value: entry.proof_url ?? "",
+      },
+    },
+    {
+      type: 18,
+      label: "📊 오늘 목표 달성률 (0~100)",
+      component: {
+        type: 4,
+        custom_id: MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE,
+        style: 1,
+        placeholder: "0~100",
+        min_length: 1,
+        max_length: 3,
+        required: true,
+        value: entry.achievement_rate != null ? String(entry.achievement_rate) : "100",
+      },
+    },
+  ]);
+}
+
+export function handleCheckinEditModal(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  ctx.waitUntil(handleCheckinEditModalAsync(interaction, env));
+  return deferredEphemeralResponse();
+}
+
+async function handleCheckinEditModalAsync(
+  interaction: DiscordInteraction,
+  env: Env
+): Promise<void> {
+  const modalId = interaction.data?.custom_id ?? "";
+  const entryId = parseInt(modalId.split(":")[1] ?? "", 10);
+  const user = interaction.member?.user ?? interaction.user;
+  if (!user || isNaN(entryId)) return;
+
+  const rows = interaction.data?.components ?? [];
+  const getText = (id: string): string => {
+    for (const row of rows) {
+      if (row.type === 18 && row.component?.custom_id === id) return (row.component.value ?? "").trim();
+      for (const c of row.components ?? []) if (c.custom_id === id) return c.value.trim();
+    }
+    return "";
+  };
+
+  const content = getText(MODAL_FIELDS.CHECKIN.CONTENT);
+  const proofUrl = getText(MODAL_FIELDS.CHECKIN.PROOF_URL) || null;
+  const rateRaw = getText(MODAL_FIELDS.CHECKIN.ACHIEVEMENT_RATE);
+  const rateParsed = rateRaw ? parseInt(rateRaw, 10) : null;
+  if (rateRaw && (isNaN(rateParsed!) || rateParsed! < 0 || rateParsed! > 100)) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 달성률은 0~100 사이 숫자만 입력 가능합니다.", { ephemeral: true });
+    return;
+  }
+  const achievementRate = rateParsed !== null && !isNaN(rateParsed)
+    ? Math.min(100, Math.max(0, rateParsed)) : null;
+
+  const entry = await getDailyCheckinEntryById(env.DB, entryId);
+  if (!entry || entry.discord_user_id !== user.id) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 수정 권한이 없습니다.", { ephemeral: true });
+    return;
+  }
+
+  const today = await ensureTodayCheckinCycle(env.DB, interaction.guild_id!, env.DISCORD_BOT_TOKEN);
+  if (entry.daily_checkin_cycle_id !== today.id) {
+    await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+      "❌ 당일 인증만 수정할 수 있습니다.", { ephemeral: true });
+    return;
+  }
+
+  if (!content) return;
+  await updateSimpleCheckin(env.DB, entryId, { content, proofUrl, achievementRate });
+
+  const imageIds = (() => {
+    for (const row of rows) {
+      if (row.type === 18 && row.component?.custom_id === MODAL_FIELDS.CHECKIN.PROOF_IMAGE)
+        return row.component.values ?? [];
+    }
+    return [];
+  })();
+  const resolvedAttachments = interaction.data?.resolved?.attachments ?? {};
+  let imageUrls = imageIds
+    .map((id: string) => resolvedAttachments[id])
+    .filter((a: any): a is NonNullable<typeof a> => !!a?.content_type?.startsWith("image/"))
+    .map((a: any) => a.url as string);
+
+  // 새 이미지 없으면 기존 메시지에서 이미지 URL 복원
+  if (imageUrls.length === 0 && entry.entry_message_id) {
+    try {
+      const cycle = await getDailyCheckinCycleById(env.DB, entry.daily_checkin_cycle_id);
+      if (cycle) {
+        const existing = await getMessage(cycle.thread_id, entry.entry_message_id, env.DISCORD_BOT_TOKEN);
+        const container = (existing.components as any[])?.find((c: any) => c.type === 17);
+        const gallery = container?.components?.find((c: any) => c.type === 12);
+        if (gallery?.items) {
+          imageUrls = gallery.items.map((item: any) => item.media?.url as string).filter(Boolean);
+        }
+      }
+    } catch {
+      // 복원 실패 시 이미지 없이 진행
+    }
+  }
+
+  if (entry.entry_message_id) {
+    const cycle = await getDailyCheckinCycleById(env.DB, entry.daily_checkin_cycle_id);
+    if (cycle) {
+      const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
+      const cardComponents: unknown[] = [
+        { type: 10, content: "### " + now + " (수정됨)" },
+        { type: 14, divider: true, spacing: 1 },
+        { type: 10, content },
+      ];
+      if (achievementRate !== null) cardComponents.push({ type: 10, content: "**달성률:** " + achievementRate + "%" });
+      if (proofUrl) cardComponents.push({ type: 10, content: proofUrl });
+      if (imageUrls.length > 0) {
+        cardComponents.push({ type: 12, items: imageUrls.map((url) => ({ media: { url } })) });
+      }
+      cardComponents.push({ type: 1, components: [
+        { type: 2, style: 2, label: "✏️ 수정", custom_id: "checkin:edit:" + entryId },
+      ]});
+
+      const msgBody = {
+        flags: MessageFlags.IS_COMPONENTS_V2,
+        components: [{ type: 17, accent_color: 0x57F287, components: cardComponents }],
+      };
+
+      try {
+        const { settings } = await ensureV2GuildSetup(env.DB, interaction.guild_id!, env.DISCORD_BOT_TOKEN);
+        if (settings.checkin_webhook_id && settings.checkin_webhook_token) {
+          await editWebhookMessage(settings.checkin_webhook_id, settings.checkin_webhook_token, entry.entry_message_id, cycle.thread_id, msgBody);
+        } else {
+          await editMessage(cycle.thread_id, entry.entry_message_id, env.DISCORD_BOT_TOKEN, msgBody);
+        }
+      } catch (err) {
+        console.error("[checkin-edit] 메시지 수정 실패:", err);
+      }
+    }
+  }
+
+  await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+    "✅ 인증이 수정되었습니다.", { ephemeral: true });
 }

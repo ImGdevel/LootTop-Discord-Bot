@@ -150,6 +150,7 @@ export const COMMANDS = {
 
 export const MODAL_IDS = {
   CHECKIN: "modal_checkin_simple",
+  CHECKIN_EDIT: "modal_checkin_edit",
   VACATION: "modal_vacation",
   GOAL: "modal_goal_simple",
 } as const;
