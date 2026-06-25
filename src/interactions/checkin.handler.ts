@@ -73,7 +73,31 @@ export function handleCheckinModal(
   env: Env,
   ctx: ExecutionContext
 ): Response {
-  ctx.waitUntil(handleCheckinModalAsync(interaction, env));
+  ctx.waitUntil((async () => {
+    let done = false;
+    const timeoutHandle = setTimeout(async () => {
+      if (!done) {
+        done = true;
+        try {
+          await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+            "⏱️ 처리 시간이 초과됐습니다. 잠시 후 다시 시도해주세요.", { ephemeral: true });
+        } catch {}
+      }
+    }, 10000);
+    try {
+      await handleCheckinModalAsync(interaction, env);
+      done = true;
+      clearTimeout(timeoutHandle);
+    } catch (err) {
+      done = true;
+      clearTimeout(timeoutHandle);
+      console.error("[checkin] error:", err);
+      try {
+        await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
+          "⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", { ephemeral: true });
+      } catch {}
+    }
+  })());
   return deferredEphemeralResponse();
 }
 
@@ -152,7 +176,7 @@ async function handleCheckinModalAsync(
   });
 
   const weekStartDate = getWeekStartDate(cycle.checkin_date);
-  await awardCheckinPoints(env.DB, guildId, user.id, cycle.checkin_date, weekStartDate);
+  const pointsPromise = awardCheckinPoints(env.DB, guildId, user.id, cycle.checkin_date, weekStartDate);
 
   const now = new Date().toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",
@@ -192,7 +216,10 @@ async function handleCheckinModalAsync(
 
   try {
     let msg: { id: string };
-    const { settings } = await ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN);
+    const [{ settings }] = await Promise.all([
+      ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN),
+      pointsPromise,
+    ]);
 
     if (settings.checkin_webhook_id && settings.checkin_webhook_token) {
       msg = await executeWebhook(
