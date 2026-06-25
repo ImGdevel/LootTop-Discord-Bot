@@ -1,4 +1,4 @@
-import { deferredEphemeralResponse, sendFollowup } from "../discord/response.js";
+import { sendFollowup } from "../discord/response.js";
 import {
   fetchGuildSettings,
   formatSettings,
@@ -6,7 +6,44 @@ import {
   type SettingsField,
 } from "../services/guild-settings.service.js";
 import { InteractionResponseType, MessageFlags } from "../types.js";
-import type { DiscordInteraction, Env } from "../types.js";
+import type { DiscordInteraction } from "../types.js";
+
+const DAY_NAMES: Record<string, string> = {
+  "0": "일요일", "1": "월요일", "2": "화요일", "3": "수요일",
+  "4": "목요일", "5": "금요일", "6": "토요일",
+};
+
+function generateTimeChoices(input: string): Array<{ name: string; value: string }> {
+  const times: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      times.push(`${hh}:${mm}`);
+    }
+  }
+  const filtered = input ? times.filter((t) => t.startsWith(input)) : times;
+  return filtered.slice(0, 25).map((t) => ({ name: t, value: t }));
+}
+
+export function handleTimeAutocomplete(interaction: DiscordInteraction): Response {
+  function findFocusedValue(opts: any[]): string {
+    for (const o of opts) {
+      if (o.focused && o.name === "시간") return o.value ?? "";
+      if (o.options) {
+        const found = findFocusedValue(o.options);
+        if (found !== null) return found;
+      }
+    }
+    return "";
+  }
+  const input = findFocusedValue((interaction.data?.options as any[]) ?? []);
+  const choices = generateTimeChoices(input);
+  return new Response(
+    JSON.stringify({ type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, data: { choices } }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
 
 const MANAGE_GUILD = 0x20n;
 
@@ -34,8 +71,8 @@ export function forbiddenResponse(): Response {
 }
 
 /**
- * /관리자 설정 서브커맨드 옵션 배열을 직접 받아 처리한다.
- * options: 설정 하위 subcommand 배열 (보기 / 채널 / 시간 / 타임존)
+ * /설정 커맨드 옵션 배열을 받아 처리한다.
+ * options: 설정 루트 커맨드의 options (보기 / 채널 / 시간 / 타임존)
  */
 export async function processSettingsOptions(
   db: D1Database,
@@ -76,23 +113,40 @@ export async function processSettingsOptions(
   }
 
   if (subcommand === "시간") {
-    const subOptions = options?.[0]?.options as any[] | undefined;
-    const type = subOptions?.find((o: any) => o.name === "종류")?.value as string;
-    const time = subOptions?.find((o: any) => o.name === "시간")?.value as string;
+    // 시간(type-2 group) → 일간갱신/주간갱신/알림갱신(type-1)
+    const timeSubOptions = options?.[0]?.options as any[] | undefined;
+    const timeSub = timeSubOptions?.[0]?.name as string | undefined;
+    const timeParams = timeSubOptions?.[0]?.options as any[] | undefined;
+    const time = timeParams?.find((o: any) => o.name === "시간")?.value as string;
 
-    const fieldMap: Record<string, SettingsField> = {
-      "목표생성": "goal_publish_time",
-      "인증시작": "checkin_thread_open_time",
-      "인증마감": "checkin_thread_close_time",
-      "리더보드생성": "leaderboard_publish_time",
-    };
-    const field = fieldMap[type];
-    if (!field || !time) {
-      await sendFollowup(appId, token, "올바른 종류와 시간을 입력해 주세요.", { ephemeral: true });
+    if (timeSub === "일간갱신") {
+      if (!time) { await sendFollowup(appId, token, "시간을 입력해 주세요.", { ephemeral: true }); return; }
+      await updateGuildSetting(db, guildId, "checkin_thread_open_time", time);
+      await updateGuildSetting(db, guildId, "checkin_thread_close_time", time);
+      await sendFollowup(appId, token, "✅ 일간갱신 시간이 `" + time + "`으로 설정되었습니다. (인증 시작·마감 동일 적용)", { ephemeral: true });
       return;
     }
-    const result = await updateGuildSetting(db, guildId, field, time);
-    await sendFollowup(appId, token, result.message, { ephemeral: true });
+
+    if (timeSub === "주간갱신") {
+      const dayValue = timeParams?.find((o: any) => o.name === "요일")?.value as string;
+      if (!dayValue || !time) { await sendFollowup(appId, token, "요일과 시간을 모두 입력해 주세요.", { ephemeral: true }); return; }
+      const dayName = DAY_NAMES[dayValue] ?? dayValue;
+      await updateGuildSetting(db, guildId, "goal_publish_time", time);
+      await updateGuildSetting(db, guildId, "leaderboard_publish_time", time);
+      await updateGuildSetting(db, guildId, "goal_publish_day", dayValue);
+      await updateGuildSetting(db, guildId, "leaderboard_publish_day", dayValue);
+      await sendFollowup(appId, token, "✅ 주간갱신이 **매주 " + dayName + " " + time + "**으로 설정되었습니다. (목표·리더보드 동일 적용)", { ephemeral: true });
+      return;
+    }
+
+    if (timeSub === "알림갱신") {
+      if (!time) { await sendFollowup(appId, token, "시간을 입력해 주세요.", { ephemeral: true }); return; }
+      await updateGuildSetting(db, guildId, "checkin_reminder_time", time);
+      await sendFollowup(appId, token, "✅ 알림 시간이 `" + time + "`으로 설정되었습니다.", { ephemeral: true });
+      return;
+    }
+
+    await sendFollowup(appId, token, "알 수 없는 시간 설정 명령어입니다.", { ephemeral: true });
     return;
   }
 
