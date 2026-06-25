@@ -214,7 +214,10 @@ export async function channelExists(
   try {
     await getChannel(channelId, botToken);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // 404만 "없음"으로 처리; 403/네트워크 오류 등은 존재 가정 (null 업데이트 방지)
+    if (err instanceof Error && err.message.includes(": 404 ")) return false;
+    console.warn("[discord] channelExists 오류 (존재로 간주):", err);
+    return true;
   }
 }

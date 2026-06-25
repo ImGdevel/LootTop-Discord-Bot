@@ -74,29 +74,37 @@ export async function ensureV2GuildSetup(
   const updates: Partial<Omit<GuildSettingsRow, "guild_id" | "created_at" | "updated_at">> = {};
 
   if (!settings.study_home_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "스터디-홈",
-      type: CHANNEL_TYPES.GUILD_TEXT,
-      topic: "LoopTop 스터디 메인 홈",
-    });
-    updates.study_home_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
+    try {
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "스터디-홈",
+        type: CHANNEL_TYPES.GUILD_TEXT,
+        topic: "LoopTop 스터디 메인 홈",
+      });
+      updates.study_home_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+    } catch (err) {
+      console.error("[guild-setup] 스터디홈 채널 생성 실패:", err);
+    }
   }
 
   if (!settings.goal_forum_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "목표",
-      type: CHANNEL_TYPES.GUILD_FORUM,
-    });
-    updates.goal_forum_channel_id = ch.id;
-    updates.plan_reminder_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
     try {
-      const wh = await createWebhook(ch.id, botToken, "목표 카드");
-      updates.goal_webhook_id = wh.id;
-      updates.goal_webhook_token = wh.token;
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "목표",
+        type: CHANNEL_TYPES.GUILD_FORUM,
+      });
+      updates.goal_forum_channel_id = ch.id;
+      updates.plan_reminder_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+      try {
+        const wh = await createWebhook(ch.id, botToken, "목표 카드");
+        updates.goal_webhook_id = wh.id;
+        updates.goal_webhook_token = wh.token;
+      } catch (err) {
+        console.error("[guild-setup] 목표 webhook 생성 실패:", err);
+      }
     } catch (err) {
-      console.error("[guild-setup] 목표 webhook 생성 실패:", err);
+      console.error("[guild-setup] 목표 채널 생성 실패:", err);
     }
   } else if (!settings.goal_webhook_id || !settings.goal_webhook_token) {
     try {
@@ -109,24 +117,25 @@ export async function ensureV2GuildSetup(
   }
 
   if (!settings.checkin_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "인증",
-      type: CHANNEL_TYPES.GUILD_TEXT,
-      topic: "매일 생성되는 인증 쓰레드",
-    });
-    updates.checkin_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
-
-    // 인증 채널에 webhook 생성 (text channel이므로 webhook 지원)
     try {
-      const wh = await createWebhook(ch.id, botToken, "인증 카드");
-      updates.checkin_webhook_id = wh.id;
-      updates.checkin_webhook_token = wh.token;
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "인증",
+        type: CHANNEL_TYPES.GUILD_TEXT,
+        topic: "매일 생성되는 인증 쓰레드",
+      });
+      updates.checkin_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+      try {
+        const wh = await createWebhook(ch.id, botToken, "인증 카드");
+        updates.checkin_webhook_id = wh.id;
+        updates.checkin_webhook_token = wh.token;
+      } catch (err) {
+        console.error("[guild-setup] 인증 webhook 생성 실패:", err);
+      }
     } catch (err) {
-      console.error("[guild-setup] 인증 webhook 생성 실패:", err);
+      console.error("[guild-setup] 인증 채널 생성 실패:", err);
     }
   } else if (!settings.checkin_webhook_id || !settings.checkin_webhook_token) {
-    // 채널은 있지만 webhook이 없는 경우 backfill
     try {
       const wh = await createWebhook(settings.checkin_channel_id, botToken, "인증 카드");
       updates.checkin_webhook_id = wh.id;
@@ -137,40 +146,51 @@ export async function ensureV2GuildSetup(
   }
 
   if (!settings.leaderboard_forum_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "리더보드",
-      type: CHANNEL_TYPES.GUILD_FORUM,
-    });
-    updates.leaderboard_forum_channel_id = ch.id;
-    updates.leaderboard_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
+    try {
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "리더보드",
+        type: CHANNEL_TYPES.GUILD_FORUM,
+      });
+      updates.leaderboard_forum_channel_id = ch.id;
+      updates.leaderboard_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+    } catch (err) {
+      console.error("[guild-setup] 리더보드 채널 생성 실패:", err);
+    }
   }
 
   if (!settings.notification_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "알림",
-      type: CHANNEL_TYPES.GUILD_TEXT,
-      topic: "인증 리마인드 알림",
-    });
-    updates.notification_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
+    try {
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "알림",
+        type: CHANNEL_TYPES.GUILD_TEXT,
+        topic: "인증 리마인드 알림",
+      });
+      updates.notification_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+    } catch (err) {
+      console.error("[guild-setup] 알림 채널 생성 실패:", err);
+    }
   }
 
   if (!settings.vacation_channel_id) {
-    const ch = await createGuildChannel(guildId, botToken, {
-      name: "휴가",
-      type: CHANNEL_TYPES.GUILD_TEXT,
-      topic: "휴가 신청",
-    });
-    updates.vacation_channel_id = ch.id;
-    createdChannels.push("#" + ch.name);
-
     try {
-      const wh = await createWebhook(ch.id, botToken, "휴가 카드");
-      updates.vacation_webhook_id = wh.id;
-      updates.vacation_webhook_token = wh.token;
+      const ch = await createGuildChannel(guildId, botToken, {
+        name: "휴가",
+        type: CHANNEL_TYPES.GUILD_TEXT,
+        topic: "휴가 신청",
+      });
+      updates.vacation_channel_id = ch.id;
+      createdChannels.push("#" + ch.name);
+      try {
+        const wh = await createWebhook(ch.id, botToken, "휴가 카드");
+        updates.vacation_webhook_id = wh.id;
+        updates.vacation_webhook_token = wh.token;
+      } catch (err) {
+        console.error("[guild-setup] 휴가 webhook 생성 실패:", err);
+      }
     } catch (err) {
-      console.error("[guild-setup] 휴가 webhook 생성 실패:", err);
+      console.error("[guild-setup] 휴가 채널 생성 실패:", err);
     }
   } else if (!settings.vacation_webhook_id || !settings.vacation_webhook_token) {
     try {
