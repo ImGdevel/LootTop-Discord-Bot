@@ -5,6 +5,8 @@ import {
   handleCheckinButton,
   handleCheckinModal,
   handleCheckinCommand,
+  handleCheckinEditButton,
+  handleCheckinEditModal,
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
 import { handleVersionCommand } from "./version.handler.js";
@@ -14,11 +16,11 @@ import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-export function routeInteraction(
+export async function routeInteraction(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   switch (interaction.type) {
     case InteractionType.APPLICATION_COMMAND:
       return routeCommand(interaction, env, ctx);
@@ -58,13 +60,16 @@ function routeCommand(
   }
 }
 
-function routeComponent(
+async function routeComponent(
   interaction: DiscordInteraction,
   env: Env,
   ctx: ExecutionContext
-): Response | null {
+): Promise<Response | null> {
   const id = interaction.data?.custom_id ?? "";
 
+  if (id.startsWith("checkin:edit:")) {
+    return handleCheckinEditButton(interaction, env);
+  }
   if (id.startsWith("checkin:submit") || id.startsWith("home:checkin")) {
     return handleCheckinButton(interaction);
   }
@@ -90,6 +95,9 @@ function routeModal(
 ): Response | null {
   if (interaction.data?.custom_id === MODAL_IDS.CHECKIN) {
     return handleCheckinModal(interaction, env, ctx);
+  }
+  if ((interaction.data?.custom_id ?? "").startsWith(MODAL_IDS.CHECKIN_EDIT)) {
+    return handleCheckinEditModal(interaction, env, ctx);
   }
   if (interaction.data?.custom_id === VACATION_MODAL_ID) {
     return handleVacationModal(interaction, env, ctx);

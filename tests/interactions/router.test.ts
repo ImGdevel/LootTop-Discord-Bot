@@ -10,6 +10,8 @@ const handlerMocks = vi.hoisted(() => ({
   handleCheckinButton: vi.fn(),
   handleCheckinModal: vi.fn(),
   handleCheckinCommand: vi.fn(),
+  handleCheckinEditButton: vi.fn(),
+  handleCheckinEditModal: vi.fn(),
   handleLeaderboardCommand: vi.fn(),
 }));
 
@@ -42,6 +44,8 @@ vi.mock("../../src/interactions/checkin.handler.js", () => ({
   handleCheckinButton: handlerMocks.handleCheckinButton,
   handleCheckinModal: handlerMocks.handleCheckinModal,
   handleCheckinCommand: handlerMocks.handleCheckinCommand,
+  handleCheckinEditButton: handlerMocks.handleCheckinEditButton,
+  handleCheckinEditModal: handlerMocks.handleCheckinEditModal,
 }));
 
 vi.mock("../../src/interactions/leaderboard.handler.js", () => ({
@@ -64,58 +68,76 @@ describe("routeInteraction", () => {
     Object.values(handlerMocks).forEach((mock) => mock.mockReturnValue(response));
   });
 
-  it("routes /홈 command to the home handler", () => {
+  it("routes /홈 command to the home handler", async () => {
     const interaction = createCommandInteraction(COMMANDS.HOME);
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleHomeCommand).toHaveBeenCalledWith(interaction, env, ctx);
   });
 
-  it("routes /인증 command to the checkin command handler", () => {
+  it("routes /인증 command to the checkin command handler", async () => {
     const interaction = createCommandInteraction(COMMANDS.CHECKIN);
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleCheckinCommand).toHaveBeenCalledWith(interaction, env, ctx);
   });
 
-  it("routes /버전 command to the version handler", () => {
+  it("routes /버전 command to the version handler", async () => {
     const interaction = createCommandInteraction(COMMANDS.VERSION);
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleVersionCommand).toHaveBeenCalledWith(interaction, env);
   });
 
-  it("routes checkin component ids to the checkin button handler", () => {
+  it("routes checkin component ids to the checkin button handler", async () => {
     const interaction = createComponentInteraction("checkin:submit:self:today:1");
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleCheckinButton).toHaveBeenCalledWith(interaction);
   });
 
-  it("routes goal component ids to the goal handler", () => {
+  it("routes checkin edit component ids to the edit handler", async () => {
+    const interaction = createComponentInteraction("checkin:edit:42");
+
+    const actual = await routeInteraction(interaction, env, ctx);
+
+    expect(actual).toBe(response);
+    expect(handlerMocks.handleCheckinEditButton).toHaveBeenCalledWith(interaction, env);
+  });
+
+  it("routes goal component ids to the goal handler", async () => {
     const interaction = createComponentInteraction(GOAL_SUBMIT_BUTTON_ID);
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleGoalButton).toHaveBeenCalledWith(interaction);
   });
 
-  it("routes checkin modal submissions to the modal handler", () => {
+  it("routes checkin modal submissions to the modal handler", async () => {
     const interaction = createModalInteraction(MODAL_IDS.CHECKIN);
 
-    const actual = routeInteraction(interaction, env, ctx);
+    const actual = await routeInteraction(interaction, env, ctx);
 
     expect(actual).toBe(response);
     expect(handlerMocks.handleCheckinModal).toHaveBeenCalledWith(interaction, env, ctx);
+  });
+
+  it("routes checkin edit modal submissions to the edit modal handler", async () => {
+    const interaction = createModalInteraction(MODAL_IDS.CHECKIN_EDIT + ":42");
+
+    const actual = await routeInteraction(interaction, env, ctx);
+
+    expect(actual).toBe(response);
+    expect(handlerMocks.handleCheckinEditModal).toHaveBeenCalledWith(interaction, env, ctx);
   });
 });
 
