@@ -241,7 +241,7 @@ async function handleCheckinModalAsync(
   }
 
   await sendFollowup(env.DISCORD_APPLICATION_ID, interaction.token,
-    "<:02:1519584799541563516> 인증이 완료되었습니다!", { ephemeral: true });
+    "인증이 완료되었습니다!", { ephemeral: true });
 }
 
 export function handleCheckinCommand(
