@@ -207,6 +207,22 @@ export async function editWebhookMessage(
   return res.json() as Promise<DiscordMessage>;
 }
 
+export async function deleteWebhookMessage(
+  webhookId: string,
+  webhookToken: string,
+  messageId: string,
+  threadId: string
+): Promise<void> {
+  const res = await fetch(
+    "https://discord.com/api/v10/webhooks/" + webhookId + "/" + webhookToken + "/messages/" + messageId + "?thread_id=" + threadId,
+    { method: "DELETE" }
+  );
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error("deleteWebhookMessage failed: " + res.status + " " + text);
+  }
+}
+
 export async function deleteMessage(
   channelId: string,
   messageId: string,

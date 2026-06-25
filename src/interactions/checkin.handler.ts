@@ -5,9 +5,10 @@ import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
 import { insertSimpleCheckin, getDailyCheckinEntryById, updateSimpleCheckin, softDeleteCheckin } from "../db/daily-checkin-entries.repository.js";
 import { getDailyCheckinCycleById } from "../db/daily-checkin-cycles.repository.js";
 import { upsertUser } from "../db/users.repository.js";
+import { getGuildSettings } from "../db/guild-settings.repository.js";
 import { awardCheckinPoints, revokeCheckinPoints } from "../services/points.service.js";
 import { getWeekStartDate } from "../domain/date.js";
-import { createMessage, deleteMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
+import { createMessage, deleteMessage, deleteWebhookMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
 import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
@@ -416,7 +417,7 @@ async function handleCheckinEditModalAsync(
     if (cycle) {
       const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
       const cardComponents: unknown[] = [
-        { type: 10, content: "### " + now + " (수정됨)" },
+        { type: 10, content: "### " + now },
         { type: 14, divider: true, spacing: 1 },
         { type: 10, content },
       ];
@@ -427,6 +428,7 @@ async function handleCheckinEditModalAsync(
       }
       cardComponents.push({ type: 1, components: [
         { type: 2, style: 2, label: "✏️ 수정", custom_id: "checkin:edit:" + entryId },
+        { type: 2, style: 4, label: "🗑️ 삭제", custom_id: "checkin:delete:" + entryId },
       ]});
 
       const msgBody = {
@@ -493,10 +495,15 @@ async function handleCheckinDeleteAsync(
   // 소프트 삭제
   await softDeleteCheckin(env.DB, entryId);
 
-  // 채널 메시지 삭제
+  // 채널 메시지 삭제 (웹훅 메시지면 웹훅으로, 아니면 봇 토큰으로)
   if (entry.entry_message_id) {
     try {
-      await deleteMessage(cycle.thread_id, entry.entry_message_id, env.DISCORD_BOT_TOKEN);
+      const settings = await getGuildSettings(env.DB, guildId);
+      if (settings?.checkin_webhook_id && settings?.checkin_webhook_token) {
+        await deleteWebhookMessage(settings.checkin_webhook_id, settings.checkin_webhook_token, entry.entry_message_id, cycle.thread_id);
+      } else {
+        await deleteMessage(cycle.thread_id, entry.entry_message_id, env.DISCORD_BOT_TOKEN);
+      }
     } catch (err) {
       console.error("[checkin] 메시지 삭제 실패:", err);
     }
