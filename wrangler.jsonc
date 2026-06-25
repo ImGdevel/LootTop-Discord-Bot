@@ -18,7 +18,7 @@
     ]
   },
   "vars": {
-    "APP_VERSION": "0.12.4"
+    "APP_VERSION": "0.12.5"
   },
   "version_metadata": {
     "binding": "VERSION_METADATA"

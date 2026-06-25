@@ -100,7 +100,14 @@ async function handleProfileAsync(
       type: 17,
       accent_color: 0x5865F2,
       components: [
-        { type: 10, content: "## 👤 " + displayName + " 프로필" },
+        {
+          type: 9,
+          components: [{ type: 10, content: "## 👤 " + displayName + " 프로필" }],
+          accessory: {
+            type: 11,
+            media: { url: "https://cdn.discordapp.com/emojis/1519584799541563516.png" },
+          },
+        },
         { type: 14, divider: true, spacing: 1 },
         {
           type: 10,
