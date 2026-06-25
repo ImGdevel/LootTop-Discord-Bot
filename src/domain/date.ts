@@ -81,12 +81,14 @@ export function formatWeekLabel(weekStartDate: string): string {
 
 // N -> "N Loop"
 export function formatWeekNumber(n: number): string {
-  return n + " Loop";
+  return "Loop " + n;
 }
 
-// 사이클의 week_number가 있으면 "N Loop", 없으면 레거시 날짜 표기
+// 사이클의 week_number가 있으면 "N Loop (a월 x주차)", 없으면 레거시 날짜 표기
 export function weekLabel(weekNumber: number | null, weekStartDate: string): string {
-  return weekNumber != null ? formatWeekNumber(weekNumber) : formatWeekLabel(weekStartDate);
+  return weekNumber != null
+    ? formatWeekNumber(weekNumber) + " (" + formatWeekLabel(weekStartDate) + ")"
+    : formatWeekLabel(weekStartDate);
 }
 
 export function isScheduledTime(
