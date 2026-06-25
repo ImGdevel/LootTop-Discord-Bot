@@ -51,7 +51,7 @@ async function handleHomeCommandAsync(
     return;
   }
 
-  // 관리자: 채널 초기화도 수행
+  // 채널 초기화도 수행
   const setup = await ensureV2GuildSetup(env.DB, guildId, env.DISCORD_BOT_TOKEN);
   try { await ensureCurrentWeeklyGoalCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* noop */ }
   try { await ensureTodayCheckinCycle(env.DB, guildId, env.DISCORD_BOT_TOKEN); } catch { /* noop */ }

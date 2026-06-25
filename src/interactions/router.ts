@@ -1,4 +1,3 @@
-import { handleAdmin } from "../commands/handlers.js";
 import { handleVacationCommand, handleVacationButton, handleVacationModal, VACATION_MODAL_ID, VACATION_BUTTON_ID } from "./vacation.handler.js";
 import { handleGoalCommand, handleGoalButton, handleGoalModal, GOAL_MODAL_ID, GOAL_SUBMIT_BUTTON_ID } from "./goal.handler.js";
 import { handleHomeCommand } from "./home.handler.js";
@@ -9,6 +8,8 @@ import {
 } from "./checkin.handler.js";
 import { handleLeaderboardCommand } from "./leaderboard.handler.js";
 import { handleVersionCommand } from "./version.handler.js";
+import { handleTimeAutocomplete } from "../commands/settings.handler.js";
+import { handleSettings } from "../commands/admin.handler.js";
 import { COMMANDS, MODAL_IDS } from "../commands/definitions.js";
 import { InteractionType } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
@@ -25,6 +26,8 @@ export function routeInteraction(
       return routeComponent(interaction, env, ctx);
     case InteractionType.MODAL_SUBMIT:
       return routeModal(interaction, env, ctx);
+    case InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
+      return handleTimeAutocomplete(interaction);
     default:
       return null;
   }
@@ -38,8 +41,6 @@ function routeCommand(
   switch (interaction.data?.name) {
     case COMMANDS.HOME:
       return handleHomeCommand(interaction, env, ctx);
-    case COMMANDS.ADMIN:
-      return handleAdmin(interaction, env, ctx);
     case COMMANDS.CHECKIN:
       return handleCheckinCommand(interaction, env, ctx);
     case COMMANDS.VACATION:
@@ -50,6 +51,8 @@ function routeCommand(
       return handleLeaderboardCommand(interaction, env, ctx);
     case COMMANDS.VERSION:
       return handleVersionCommand(interaction, env);
+    case COMMANDS.SETTINGS:
+      return handleSettings(interaction, env, ctx);
     default:
       return null;
   }

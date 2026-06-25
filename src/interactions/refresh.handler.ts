@@ -5,7 +5,7 @@ import { ensureWeeklyLeaderboardCycle } from "../services/leaderboard-cycle-v2.s
 import { ensureCurrentVacationCycle } from "../services/vacation-cycle.service.js";
 import type { DiscordInteraction, Env } from "../types.js";
 
-// /관리자 갱신에서 직접 호출 가능한 핵심 로직
+// /설정 갱신에서 직접 호출 가능한 핵심 로직
 export async function handleRefreshAsync(
   guildId: string,
   env: Env,

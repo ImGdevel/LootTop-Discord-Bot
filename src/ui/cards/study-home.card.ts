@@ -37,7 +37,7 @@ export function buildStudyHomeCard(input: {
           section("**내 목표 상태**\n" + input.myGoalStatusLabel),
           section("**오늘 인증 상태**\n" + input.myTodayCheckinStatusLabel),
           section(
-            "**빠른 작업**\n홈 상태를 새로고침하거나 관리자 설정으로 이동할 수 있습니다.",
+            "**빠른 작업**\n홈 상태를 새로고침하거나 서버 설정으로 이동할 수 있습니다.",
             button({
               label: input.buttons.settings ? "서버 설정" : "새로고침",
               customId: input.buttons.settings ?? input.buttons.refresh,
