@@ -185,7 +185,7 @@ async function runVerify(
     check("스터디 홈", settings.study_home_channel_id),
     check("목표 포럼", settings.goal_forum_channel_id),
     check("인증 채널", settings.checkin_channel_id),
-    check("리더보드 포럼", settings.leaderboard_forum_channel_id),
+    check("리더보드 채널", settings.leaderboard_channel_id),
     "",
     "**스케줄 설정**",
     "🕐 일간갱신 (인증): `" + (settings.checkin_thread_open_time ?? "미설정") + "`",

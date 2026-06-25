@@ -13,6 +13,7 @@ interface ParticipantStat {
   checkins: number;
   targetDays: number;
   rate: number; // 0~100
+  totalPoints: number;
 }
 
 /** 이번 주 경과 일수 (weekStart 기준, 최대 7) */
@@ -45,31 +46,41 @@ function medal(rank: number): string {
 }
 
 function top3Entry(s: ParticipantStat, rank: number): string {
-  return `${medal(rank)} **${s.displayName}**  ${rankTitle(s.rate)}\n**${s.rate}%** · ${s.checkins}/${s.targetDays}일`;
+  return `${medal(rank)} **${s.displayName}**  ${rankTitle(s.rate)}\n**${s.rate}%** · ${s.checkins}/${s.targetDays}일 · 🪙 ${s.totalPoints.toLocaleString()}p`;
 }
 
 function allEntry(s: ParticipantStat, rank: number): string {
-  return `${rank}. **${s.displayName}**  ${progressBar(s.rate)}  **${s.rate}%** (${s.checkins}/${s.targetDays}일)`;
+  return `${rank}. **${s.displayName}**  ${progressBar(s.rate)}  **${s.rate}%** (${s.checkins}/${s.targetDays}일) · 🪙 ${s.totalPoints.toLocaleString()}p`;
 }
 
 const DIV = { type: 14, divider: true, spacing: 1 };
 
 export async function buildLeaderboardComponents(
   db: D1Database,
-  guildId: string
+  guildId: string,
+  targetWeekStartDate?: string
 ): Promise<{ flags: number; components: unknown[] }> {
   const settings = await getGuildSettings(db, guildId);
   const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
-  const weekStart = getOperationalWeekStartDate(
+  const weekStart = targetWeekStartDate ?? getOperationalWeekStartDate(
     new Date(),
     timezone,
     settings?.week_start_day ?? 1,
     settings?.week_start_time ?? "00:00"
   );
   const weekEnd = getWeekEndDate(weekStart);
-  const weekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
+
+  // 지정된 주의 goal cycle에서 week_number 가져옴
+  const cycleRow = await db
+    .prepare("SELECT week_number FROM weekly_goal_cycles WHERE guild_id = ? AND week_start_date = ? LIMIT 1")
+    .bind(guildId, weekStart)
+    .first<{ week_number: number | null }>();
+  const weekNum = cycleRow?.week_number ?? await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
   const label = weekLabel(weekNum, weekStart);
-  const elapsed = elapsedDays(weekStart, timezone);
+  const currentWeekStart = getOperationalWeekStartDate(
+    new Date(), timezone, settings?.week_start_day ?? 1, settings?.week_start_time ?? "00:00"
+  );
+  const elapsed = weekStart < currentWeekStart ? 7 : elapsedDays(weekStart, timezone);
 
   // 이번 주 목표 제출자 목록 (참여자)
   const goalRows = await db
@@ -101,6 +112,7 @@ export async function buildLeaderboardComponents(
         checkins,
         targetDays: elapsed,
         rate: Math.min(rate, 100),
+        totalPoints: user?.total_points ?? 0,
       };
     })
   );
@@ -166,7 +178,8 @@ export async function buildLeaderboardComponents(
 // 레거시 호환 (leaderboard-v2.service.ts에서 사용)
 export async function buildPublicLeaderboard(
   db: D1Database,
-  guildId: string
+  guildId: string,
+  targetWeekStartDate?: string
 ): Promise<{ flags: number; components: unknown[] }> {
-  return buildLeaderboardComponents(db, guildId);
+  return buildLeaderboardComponents(db, guildId, targetWeekStartDate);
 }

@@ -21,6 +21,18 @@ export async function upsertUser(
     .run();
 }
 
+export async function addPoints(
+  db: D1Database,
+  guildId: string,
+  discordUserId: string,
+  amount: number
+): Promise<void> {
+  await db
+    .prepare("UPDATE users SET total_points = total_points + ? WHERE guild_id = ? AND discord_user_id = ?")
+    .bind(amount, guildId, discordUserId)
+    .run();
+}
+
 export async function getUser(
   db: D1Database,
   guildId: string,

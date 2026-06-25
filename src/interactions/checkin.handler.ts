@@ -5,6 +5,8 @@ import { ensureV2GuildSetup } from "../services/guild-setup-v2.service.js";
 import { insertSimpleCheckin, getDailyCheckinEntryById, updateSimpleCheckin } from "../db/daily-checkin-entries.repository.js";
 import { getDailyCheckinCycleById } from "../db/daily-checkin-cycles.repository.js";
 import { upsertUser } from "../db/users.repository.js";
+import { awardCheckinPoints } from "../services/points.service.js";
+import { getWeekStartDate } from "../domain/date.js";
 import { createMessage, editMessage, editWebhookMessage, executeWebhook, getMessage } from "../discord/rest.js";
 import { MessageFlags } from "../types.js";
 import type { DiscordInteraction, Env } from "../types.js";
@@ -148,6 +150,9 @@ async function handleCheckinModalAsync(
     proofUrl,
     achievementRate,
   });
+
+  const weekStartDate = getWeekStartDate(cycle.checkin_date);
+  await awardCheckinPoints(env.DB, guildId, user.id, cycle.checkin_date, weekStartDate);
 
   const now = new Date().toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",

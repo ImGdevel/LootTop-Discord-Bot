@@ -37,6 +37,7 @@ export interface UserRow {
   guild_id: string;
   discord_user_id: string;
   display_name_snapshot: string | null;
+  total_points: number;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +90,7 @@ export interface WeeklyLeaderboardCycleRow {
   week_start_date: string;
   week_end_date: string;
   forum_thread_id: string;
+  channel_message_id: string | null;
   title: string;
   published_at: string;
   created_at: string;

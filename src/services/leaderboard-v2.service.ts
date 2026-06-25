@@ -1,4 +1,4 @@
-import { channelExists, createForumThread } from "../discord/rest.js";
+import { channelExists, createMessage } from "../discord/rest.js";
 import { getGuildSettings } from "../db/guild-settings.repository.js";
 import {
   getWeeklyLeaderboardCycle,
@@ -34,25 +34,26 @@ export async function ensureWeeklyLeaderboardCycle(
     await db.prepare("DELETE FROM weekly_leaderboard_cycles WHERE id = ?").bind(existing.id).run();
   }
 
-  const forumChannelId = settings?.leaderboard_forum_channel_id;
-  if (!forumChannelId) throw new Error("leaderboard_forum_channel_id not configured");
+  const channelId = settings?.leaderboard_channel_id;
+  if (!channelId) throw new Error("leaderboard_channel_id not configured");
 
   const weekNum = await getLatestWeeklyGoalCycleWeekNumber(db, guildId);
   const label = weekLabel(weekNum, weekStartDate);
   const title = label + " 리더보드";
   const { flags, components } = await buildPublicLeaderboard(db, guildId);
 
-  const thread = await createForumThread(forumChannelId, botToken, {
-    name: title,
-    auto_archive_duration: 10080,
-    message: { flags, components },
+  const message = await createMessage(channelId, botToken, {
+    content: "## 📊 " + title,
+    flags,
+    components,
   });
 
   return insertWeeklyLeaderboardCycle(db, {
     guildId,
     weekStartDate,
     weekEndDate,
-    forumThreadId: thread.id,
+    forumThreadId: channelId,
+    channelMessageId: message.id,
     title,
     publishedAt: now.toISOString(),
   });

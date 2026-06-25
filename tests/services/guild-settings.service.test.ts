@@ -57,7 +57,7 @@ describe("guild-settings.service", () => {
       timezone: "Asia/Seoul",
       plan_reminder_channel_id: null,
       checkin_channel_id: "2",
-      leaderboard_channel_id: null,
+      leaderboard_channel_id: "4",
       plan_reminder_time: null,
       checkin_reminder_time: null,
       leaderboard_publish_time: "00:00",
@@ -76,7 +76,7 @@ describe("guild-settings.service", () => {
     expect(actual).toContain("스터디 홈: <#1>");
     expect(actual).toContain("목표 포럼: <#3>");
     expect(actual).toContain("인증: <#2>");
-    expect(actual).toContain("리더보드 포럼: <#4>");
+    expect(actual).toContain("리더보드 채널: <#4>");
     expect(actual).toContain("주간갱신 (목표·리더보드):");
   });
 });

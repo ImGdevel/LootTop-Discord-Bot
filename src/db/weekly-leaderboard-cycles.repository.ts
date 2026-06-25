@@ -22,6 +22,7 @@ export async function insertWeeklyLeaderboardCycle(
     weekStartDate: string;
     weekEndDate: string;
     forumThreadId: string;
+    channelMessageId?: string;
     title: string;
     publishedAt: string;
   }
@@ -30,14 +31,15 @@ export async function insertWeeklyLeaderboardCycle(
   await db
     .prepare(`
       INSERT INTO weekly_leaderboard_cycles
-        (guild_id, week_start_date, week_end_date, forum_thread_id, title, published_at, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (guild_id, week_start_date, week_end_date, forum_thread_id, channel_message_id, title, published_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       input.guildId,
       input.weekStartDate,
       input.weekEndDate,
       input.forumThreadId,
+      input.channelMessageId ?? null,
       input.title,
       input.publishedAt,
       now

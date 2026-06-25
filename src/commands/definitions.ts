@@ -57,7 +57,7 @@ export const COMMAND_DEFINITIONS = [
               { name: "스터디 홈", value: "스터디홈" },
               { name: "목표 포럼", value: "목표포럼" },
               { name: "인증 채널", value: "인증채널" },
-              { name: "리더보드 포럼", value: "리더보드포럼" },
+              { name: "리더보드 채널", value: "리더보드채널" },
               { name: "알림 채널", value: "알림채널" },
               { name: "휴가 채널", value: "휴가채널" },
             ],

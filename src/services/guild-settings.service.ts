@@ -114,7 +114,7 @@ export function formatSettings(settings: GuildSettingsRow | null): string {
     "스터디 홈: " + ch(settings.study_home_channel_id),
     "목표 포럼: " + ch(settings.goal_forum_channel_id),
     "인증: " + ch(settings.checkin_channel_id),
-    "리더보드 포럼: " + ch(settings.leaderboard_forum_channel_id),
+    "리더보드 채널: " + ch(settings.leaderboard_channel_id),
     "",
     "**스케줄 (서버 타임존 기준)**",
     "일간갱신 (인증): " + t(settings.checkin_thread_open_time),
