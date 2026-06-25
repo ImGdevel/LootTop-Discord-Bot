@@ -7,64 +7,56 @@ import { sendDailyReminder } from "./reminder-notification.service.js";
 import { closeExpiredCheckinCycles, ensureTodayCheckinCycle } from "./checkin-cycle-v2.service.js";
 import { ensureWeeklyLeaderboardCycle } from "./leaderboard-cycle-v2.service.js";
 
-type CronAction = "goal_cycle" | "checkin_open" | "checkin_close" | "leaderboard_cycle" | "reminder";
+type CronAction = "goal_cycle" | "checkin_open" | "checkin_close" | "reminder";
 
-/**
- * 현재 UTC 시각 기준으로 각 길드의 설정 시간과 비교해 실행할 액션을 결정한다.
- * 허용 오차: ±5분
- */
-function detectAction(settings: GuildSettingsRow, nowUtc: Date): CronAction | null {
+function detectActions(settings: GuildSettingsRow, nowUtc: Date): CronAction[] {
   const tz = settings.timezone;
   const localNow = new Date(nowUtc.toLocaleString("en-US", { timeZone: tz }));
-
   const day = localNow.getDay();
+  const actions: CronAction[] = [];
 
-  const goalDay = settings.goal_publish_day ?? 0;
+  const goalDay = settings.goal_publish_day ?? settings.week_start_day ?? 1;
   if (day === goalDay && isScheduledTime(nowUtc, settings.goal_publish_time ?? "18:00", tz)) {
-    return "goal_cycle";
+    actions.push("goal_cycle");
   }
 
   const openDay = settings.checkin_thread_open_day;
   if ((openDay === null || day === openDay) && isScheduledTime(nowUtc, settings.checkin_thread_open_time ?? "04:00", tz)) {
-    return "checkin_open";
+    actions.push("checkin_open");
   }
 
   const closeDay = settings.checkin_thread_close_day;
   if ((closeDay === null || day === closeDay) && isScheduledTime(nowUtc, settings.checkin_thread_close_time ?? "04:00", tz)) {
-    return "checkin_close";
+    actions.push("checkin_close");
   }
 
   if (isScheduledTime(nowUtc, settings.checkin_reminder_time ?? "23:59", tz)) {
-    return "reminder";
+    actions.push("reminder");
   }
 
-  const lbDay = settings.leaderboard_publish_day ?? settings.week_start_day ?? 1;
-  if (day === lbDay && isScheduledTime(nowUtc, settings.leaderboard_publish_time ?? "00:00", tz)) {
-    return "leaderboard_cycle";
-  }
-
-  return null;
+  return actions;
 }
 
-export async function runCronForAllGuilds(db: D1Database, botToken: string): Promise<void> {
+export async function runCronForAllGuilds(db: D1Database, botToken: string, nowUtc = new Date()): Promise<void> {
   const allSettings = await getAllGuildSettings(db);
-  const nowUtc = new Date();
 
   let processed = 0;
   let skipped = 0;
 
   for (const settings of allSettings) {
-    const action = detectAction(settings, nowUtc);
-    if (!action) {
+    const actions = detectActions(settings, nowUtc);
+    if (actions.length === 0) {
       skipped++;
       continue;
     }
 
-    try {
-      await dispatchAction(db, botToken, settings, action);
-      processed++;
-    } catch (err) {
-      console.error("Cron dispatch failed for guild " + settings.guild_id + ":", err);
+    for (const action of actions) {
+      try {
+        await dispatchAction(db, botToken, settings, action);
+        processed++;
+      } catch (err) {
+        console.error("Cron dispatch failed for guild " + settings.guild_id + " action=" + action + ":", err);
+      }
     }
   }
 
@@ -78,7 +70,11 @@ async function dispatchAction(
   action: CronAction
 ): Promise<void> {
   if (action === "goal_cycle") {
+    // 1. 이전 주 리더보드 확정 (새 goal cycle 삽입 전 — Loop N 데이터 캡처)
+    await ensureWeeklyLeaderboardCycle(db, settings.guild_id, botToken);
+    // 2. 새 주 목표 포럼 생성 (Loop N+1 삽입)
     await ensureCurrentWeeklyGoalCycle(db, settings.guild_id, botToken);
+    // 3. 휴가 스레드 생성 (Loop N+1 참조)
     await ensureCurrentVacationCycle(db, settings.guild_id, botToken);
     return;
   }
@@ -90,11 +86,6 @@ async function dispatchAction(
 
   if (action === "checkin_close") {
     await closeExpiredCheckinCycles(db, botToken, new Date().toISOString());
-    return;
-  }
-
-  if (action === "leaderboard_cycle") {
-    await ensureWeeklyLeaderboardCycle(db, settings.guild_id, botToken);
     return;
   }
 
