@@ -75,6 +75,25 @@ export async function getValidEntryItemCountsByGoalIds(db: D1Database, dailyChec
   return result.results;
 }
 
+export async function getDailyCheckinEntryById(db: D1Database, id: number): Promise<DailyCheckinEntryRow | null> {
+  const result = await db
+    .prepare("SELECT * FROM daily_checkin_entries WHERE id = ?")
+    .bind(id)
+    .first<DailyCheckinEntryRow>();
+  return result ?? null;
+}
+
+export async function updateSimpleCheckin(
+  db: D1Database,
+  id: number,
+  input: { content: string; proofUrl: string | null; achievementRate: number | null }
+): Promise<void> {
+  await db
+    .prepare("UPDATE daily_checkin_entries SET content = ?, proof_url = ?, achievement_rate = ? WHERE id = ?")
+    .bind(input.content, input.proofUrl, input.achievementRate, id)
+    .run();
+}
+
 // 단순 인증 저장 (content/proof_url 직접)
 export async function insertSimpleCheckin(
   db: D1Database,

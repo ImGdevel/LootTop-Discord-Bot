@@ -1,5 +1,13 @@
 import type { DailyCheckinCycleRow } from "./types.js";
 
+export async function getDailyCheckinCycleById(db: D1Database, id: number): Promise<DailyCheckinCycleRow | null> {
+  const result = await db
+    .prepare("SELECT * FROM daily_checkin_cycles WHERE id = ?")
+    .bind(id)
+    .first<DailyCheckinCycleRow>();
+  return result ?? null;
+}
+
 export async function getDailyCheckinCycle(
   db: D1Database,
   guildId: string,

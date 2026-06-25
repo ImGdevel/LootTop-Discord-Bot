@@ -9,6 +9,7 @@ export interface DiscordChannel {
 export interface DiscordMessage {
   id: string;
   channel_id: string;
+  components?: unknown[];
 }
 
 async function discordBotRequest<T>(
@@ -68,6 +69,17 @@ export async function createMessage(
     method: "POST",
     body,
   });
+}
+
+export async function getMessage(
+  channelId: string,
+  messageId: string,
+  botToken: string
+): Promise<DiscordMessage> {
+  return discordBotRequest<DiscordMessage>(
+    botToken,
+    "/channels/" + channelId + "/messages/" + messageId
+  );
 }
 
 export async function editMessage(
@@ -167,6 +179,30 @@ export async function executeWebhook(
   if (!res.ok) {
     const text = await res.text();
     throw new Error("executeWebhook failed: " + res.status + " " + text);
+  }
+  return res.json() as Promise<DiscordMessage>;
+}
+
+export async function editWebhookMessage(
+  webhookId: string,
+  webhookToken: string,
+  messageId: string,
+  threadId: string,
+  body: Record<string, unknown>
+): Promise<DiscordMessage> {
+  const url =
+    "https://discord.com/api/v10/webhooks/" +
+    webhookId + "/" + webhookToken +
+    "/messages/" + messageId +
+    "?thread_id=" + threadId;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error("editWebhookMessage failed: " + res.status + " " + text);
   }
   return res.json() as Promise<DiscordMessage>;
 }
